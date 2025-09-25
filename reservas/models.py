@@ -3,7 +3,7 @@ import uuid
 from django.db import models
 from django.db.models import F, Q
 from django.utils import timezone
-from django.db.models import JSONField
+from django.db import models
 from django.contrib.postgres.fields import DateTimeRangeField
 from django.contrib.postgres.indexes import GistIndex
 from django.contrib.postgres.constraints import ExclusionConstraint
@@ -43,7 +43,7 @@ class Reserva(models.Model):
     creado_por = models.ForeignKey('usuarios.Usuario', on_delete=models.SET_NULL, null=True, blank=True, related_name='reservas_creadas')
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
-    metadata = JSONField(default=dict, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
 
     objects = ReservaManager()
 
@@ -97,7 +97,7 @@ class Asignacion(models.Model):
     asignado_en = models.DateTimeField(auto_now_add=True)
     manual = models.BooleanField(default=False)
     nota = models.TextField(blank=True, null=True)
-    metadata = JSONField(default=dict, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
 
     class Meta:
         verbose_name = "asignacion"
@@ -161,7 +161,7 @@ class Incumplimiento(models.Model):
     tipo = models.CharField(max_length=100, blank=True, null=True)
     descripcion = models.TextField(blank=True, null=True)
     fecha = models.DateTimeField(default=timezone.now)
-    sancion = JSONField(default=dict, blank=True)
+    sancion = models.JSONField(default=dict, blank=True)
 
     class Meta:
         verbose_name = "incumplimiento"

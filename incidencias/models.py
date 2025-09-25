@@ -2,7 +2,7 @@
 import uuid
 from django.db import models
 from django.utils import timezone
-from django.db.models import JSONField
+from django.db import models
 
 class EstadoIncidencia(models.TextChoices):
     ABIERTA = 'abierta', 'Abierta'
@@ -19,7 +19,7 @@ class Incidencia(models.Model):
     fecha_reportada = models.DateTimeField(default=timezone.now)
     fecha_cierre = models.DateTimeField(null=True, blank=True)
     cerrado_por = models.ForeignKey('usuarios.Usuario', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
-    metadata = JSONField(default=dict, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
 
     class Meta:
         verbose_name = "incidencia"

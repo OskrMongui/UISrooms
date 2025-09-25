@@ -5,12 +5,13 @@ Django settings for config project.
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+from datetime import timedelta
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 
 # Seguridad / debug
-SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'dev-key')  # usar .env para producción
+SECRET_KEY = 'dev-key'  # usar .env para producción
 DEBUG = os.getenv('DJANGO_DEBUG', '0') == '1'
 
 # Hosts permitidos (usa CSV en .env o lista en dev)
@@ -37,6 +38,7 @@ INSTALLED_APPS = [
     # Extras
     'django.contrib.postgres',
     'rest_framework',
+    'rest_framework_simplejwt.token_blacklist',
 ]
 
 MIDDLEWARE = [
@@ -104,15 +106,18 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Custom user model
+AUTH_USER_MODEL = 'usuarios.Usuario'
+
 # Opcional: configuración básica de DRF (cuando uses)
 REST_FRAMEWORK = {
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny' if DEBUG else 'rest_framework.permissions.IsAuthenticated',
-    ],
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework.authentication.SessionAuthentication',
-        'rest_framework.authentication.BasicAuthentication',
-    ],
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',  # opcional para admin/web
+    ),
+    'DEFAULT_PERMISSION_CLASSES': (
+        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
+    ),
 }
 
 # Logging básico (útil para debug)
@@ -121,4 +126,14 @@ LOGGING = {
     'disable_existing_loggers': False,
     'handlers': {'console': {'class': 'logging.StreamHandler'}},
     'root': {'handlers': ['console'], 'level': 'INFO'},
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),        # token corto para acceso
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),           # refresh para renovar access
+    'ROTATE_REFRESH_TOKENS': True,                        # emite nuevo refresh al usar refresh
+    'BLACKLIST_AFTER_ROTATION': True,                     # recomendamos activar con token_blacklist
+    'AUTH_HEADER_TYPES': ('Bearer',),                     # Authorization: Bearer <token>
+    'ALGORITHM': 'HS256',
+    # 'SIGNING_KEY': SECRET_KEY,  # por defecto usa SECRET_KEY
 }

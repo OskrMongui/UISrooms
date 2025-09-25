@@ -1,7 +1,7 @@
 # notificaciones/models.py
 import uuid
 from django.db import models
-from django.db.models import JSONField
+from django.db import models
 
 class TipoNotificacion(models.TextChoices):
     AGENDA = 'agenda', 'Agenda'
@@ -15,7 +15,7 @@ class Notificacion(models.Model):
     destinatario = models.ForeignKey('usuarios.Usuario', on_delete=models.CASCADE, related_name='notificaciones')
     remitente = models.ForeignKey('usuarios.Usuario', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
     mensaje = models.TextField()
-    metadata = JSONField(default=dict, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
     enviado = models.BooleanField(default=False)
     leido = models.BooleanField(default=False)
     enviado_en = models.DateTimeField(null=True, blank=True)

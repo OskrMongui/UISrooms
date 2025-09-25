@@ -1,7 +1,7 @@
 # espacios/models.py
 import uuid
 from django.db import models
-from django.db.models import JSONField
+from django.db import models
 from django.contrib.postgres.fields import ArrayField
 
 class TipoEspacio(models.TextChoices):
@@ -61,7 +61,7 @@ class EspacioBitacora(models.Model):
     espacio = models.ForeignKey(Espacio, on_delete=models.CASCADE)
     usuario = models.ForeignKey('usuarios.Usuario', on_delete=models.SET_NULL, null=True, blank=True)
     accion = models.CharField(max_length=150)
-    detalle = JSONField(default=dict, blank=True)
+    detalle = models.JSONField(default=dict, blank=True)
     fecha = models.DateTimeField(auto_now_add=True)
 
     class Meta:

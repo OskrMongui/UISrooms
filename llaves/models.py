@@ -2,7 +2,7 @@
 import uuid
 from django.db import models
 from django.utils import timezone
-from django.db.models import JSONField
+from django.db import models
 
 class EstadoLlave(models.TextChoices):
     DISPONIBLE = 'disponible', 'Disponible'
@@ -18,7 +18,7 @@ class Llave(models.Model):
     estado = models.CharField(max_length=20, choices=EstadoLlave.choices, default=EstadoLlave.DISPONIBLE)
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
-    metadata = JSONField(default=dict, blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
 
     def __str__(self):
         return self.codigo or str(self.id)

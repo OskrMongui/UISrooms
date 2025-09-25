@@ -1,7 +1,7 @@
 # objetos/models.py
 import uuid
 from django.db import models
-from django.db.models import JSONField
+from django.db import models
 
 class TipoObjetoPerdido(models.TextChoices):
     DOCUMENTO = 'documento', 'Documento'
