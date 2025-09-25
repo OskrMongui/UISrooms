@@ -21,6 +21,8 @@ services:
       context: .
     env_file:
       - .env
+    environment:
+      POSTGRES_HOST: db
     command: >
       sh -c "python manage.py migrate --noinput &&
              python manage.py runserver 0.0.0.0:8000"

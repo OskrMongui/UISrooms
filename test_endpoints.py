@@ -2,7 +2,7 @@ import requests
 import json
 
 base_url = 'http://localhost:8000/api/'
-access_token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU4ODMxNDc4LCJpYXQiOjE3NTg4Mjc4NzgsImp0aSI6IjcwMmE4MmExN2E4YjQyNTE4OTkyYzEwMTRjMzRlODYyIiwidXNlcl9pZCI6IjEifQ.c1EQ8HLwkkSLibT8UkIGJTSO0PNN6gGfV2pjUBHp0s6A'
+access_token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzU4ODQyNjcyLCJpYXQiOjE3NTg4MzkwNzIsImp0aSI6IjgzYjA4Yjc2NjdkZDQwMGViNGU3NzZhZWY3ODk5MzJhIiwidXNlcl9pZCI6IjEifQ.9DpgWbUGiS3TSPsWpRMQ61oz8X8OhBoxmEMY2XIhq3U'
 headers = {
     'Authorization': f'Bearer {access_token}',
     'Content-Type': 'application/json'
@@ -47,7 +47,7 @@ for endpoint in endpoints:
 
 # Test token refresh
 print("\n=== Token Refresh ===")
-refresh_token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc1OTQzMjY3OCwiaWF0IjoxNzU4ODI3ODc4LCJqdGkiOiI3ZDczZWY0NmJhZWI0MWMzYWFlZDcwNmQ5NGNjZmY2MCIsInVzZXJfaWQiOiIxIn0.F6KuC5r6MYnBCv4SWPMtWMAFyYi9cr5y32ResNhsVxRk'
+refresh_token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTc1OTQ0Mzg3MiwiaWF0IjoxNzU4ODM5MDcyLCJqdGkiOiI5YjhkNTQwOTk5OTQyYTQzOGU2YWI5ZTAyYzVjY2VmYyIsInVzZXJfaWQiOiIxIn0.8kaW0Y95iQcXQNvCeSzWBVQhyyh2AdlETRrDbI_Saag'
 response = requests.post(f'{base_url}token/refresh/', json={'refresh': refresh_token})
 print(f"Status: {response.status_code}")
 if response.status_code == 200:
