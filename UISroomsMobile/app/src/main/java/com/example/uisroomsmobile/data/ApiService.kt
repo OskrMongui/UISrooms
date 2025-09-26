@@ -14,7 +14,8 @@ interface ApiService {
     fun getAvailabilities(): Call<List<Availability>>
 
     companion object {
-        private const val BASE_URL = "http://10.0.2.2:8000/" // For Android emulator
+        // Change this URL as needed for your environment
+        private const val BASE_URL = "http://10.0.2.2:8000/" // For Android emulator, or use your server IP
 
         fun create(): ApiService {
             val retrofit = Retrofit.Builder()

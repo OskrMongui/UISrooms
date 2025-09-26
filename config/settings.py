@@ -11,7 +11,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / '.env')
 
 # Seguridad / debug
-SECRET_KEY = 'dev-key'  # usar .env para producción
+SECRET_KEY = os.getenv('SECRET_KEY')
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY must be set in environment variables")
 DEBUG = os.getenv('DJANGO_DEBUG', '0') == '1'
 
 # Hosts permitidos (usa CSV en .env o lista en dev)
