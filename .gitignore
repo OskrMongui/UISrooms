@@ -36,3 +36,4 @@ temp_token.json
 uisrooms-web/build/
 archived/
 uisrooms-web/.env
+staticfiles/
