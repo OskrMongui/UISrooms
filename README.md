@@ -13,127 +13,113 @@ Requisitos previos
 - Docker y Docker Compose
 - Node.js (para el frontend web)
 
-Levantar el backend con Docker
-1. Copia variables de entorno:
+# UISrooms (Backend + Web)
+
+Este repo contiene el backend (Django + PostgreSQL) y el frontend web (React). Aquí tienes instrucciones paso a paso para que cualquiera que clone el repositorio pueda ejecutar el proyecto en modo desarrollo y en modo producción local.
+
+-----
+
+Requisitos previos
+- Docker y Docker Compose
+- Node.js y npm (para el frontend web)
+- PowerShell (Windows) o una terminal compatible
+
+-----
+
+Preparación (una sola vez)
+1. Clona el repositorio:
+
+```bash
+git clone <url-del-repo>
+cd UISrooms
+```
+
+2. Copia variables de entorno de ejemplo:
+
+Windows (PowerShell):
 ```powershell
 Copy-Item .env.example .env
 ```
-2. Levanta contenedores:
+Linux/macOS:
+```bash
+cp .env.example .env
+```
+
+3. Edita `.env` y añade una `SECRET_KEY` (y ajustar credenciales de la DB si no usas Docker defaults).
+
+-----
+
+Modo desarrollo (hot-reload) — recomendado para programar
+
+Se recomienda abrir dos terminales.
+
+Terminal A — Backend (Docker):
 ```powershell
+# desde la raíz del repo
 docker-compose up --build
 ```
-3. Backend disponible en `http://localhost:8000`.
 
-Levantar el frontend (desarrollo)
-1. Ir a la carpeta del frontend e instalar dependencias:
+Terminal B — Frontend (hot-reload):
+```powershell
+Set-Location .\uisrooms-web
+npm install    # sólo la primera vez o si cambias package.json
+npm start
+```
+
+- Frontend en: http://localhost:3000 (hot-reload)
+- Backend (API) en: http://localhost:8000 (APIs en /api/)
+
+Opcional: uso del helper (Windows PowerShell)
+- Ejecutar `.\\start-dev.ps1` desde la raíz abrirá dos ventanas para backend y frontend automáticamente. Si PowerShell bloquea la ejecución de scripts, habilita:
+
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+
+-----
+
+Modo producción local (servir la SPA desde Django)
+
+1. Genera la build del frontend:
+
 ```powershell
 Set-Location .\uisrooms-web
 npm install
+npm run build
+Set-Location ..
 ```
-2. Iniciar el servidor de desarrollo:
+
+2. Levanta Docker (el contenedor web ejecutará migrate, collectstatic y gunicorn):
+
 ```powershell
-npm start
+docker-compose up --build
 ```
-3. Frontend en `http://localhost:3000`.
 
-Notas
-- Asegúrate de que `.env` contiene `SECRET_KEY` y las variables de Postgres necesarias.
-- `uisrooms-web/.env` puede incluir `REACT_APP_API_URL=http://localhost:8000/api/`
+3. Abre: http://localhost:8000 — ahora Django sirve la SPA (`index.html`) y las APIs en `/api/`.
 
-Si necesitas que restaure la app móvil o archivos eliminados, puedo crear un zip/archivo con lo eliminado (si siguen disponibles localmente) o ayudarte a recuperar desde otra rama.
-# UISrooms Backend
+-----
 
-Este proyecto es una aplicación full-stack para la gestión de salas y reservas de la UIS, compuesto por:
+Comprobaciones y solución de problemas
+- Si el dev-server no arranca en 3000: verifica puertos ocupados
 
-- **Backend**: API REST en Django con PostgreSQL.
-- **Frontend Web**: Aplicación React.
-- **Aplicación Móvil**: App Android en Kotlin.
+```powershell
+netstat -ano | findstr :3000
+```
 
-## Requisitos Previos
+- Si ves 404 en `/` antes de generar la build del frontend, es normal en modo backend-only (usa http://localhost:3000 en desarrollo). Después de `npm run build` y `docker-compose up`, Django servirá la SPA en `/`.
+- Si Django lanza error por `SECRET_KEY`, asegúrate de tener `.env` con `SECRET_KEY`.
 
-- Docker y Docker Compose
-- Node.js (para el frontend web)
-- Android Studio (para la app móvil, opcional)
+-----
 
-## Configuración Inicial
+Archivos útiles en el repo
+- `start-dev.ps1`: helper PowerShell para abrir backend y frontend en desarrollo.
+- `uisrooms-web/.env.example`: ejemplo de variable `REACT_APP_API_URL`.
 
-1. Clona el repositorio:
-   ```bash
-   git clone <url-del-repo>
-   cd uisrooms-backend
-   ```
+-----
 
-2. Copia el archivo de ejemplo de variables de entorno:
-   ```bash
-   cp .env.example .env
-   ```
+Si quieres, puedo:
+- Añadir `docs/DEV.md` con esta guía paso a paso (y lo commit/pusheo).
+- Añadir endpoint `/healthz` en Django para health checks.
+- Ajustar headers/caching en WhiteNoise para producción.
 
-3. Edita `.env` con tus valores:
-   - Genera una `SECRET_KEY` segura para Django.
-   - Ajusta las URLs de API si es necesario.
-
-## Ejecutar el Backend
-
-1. Construye y ejecuta los contenedores:
-   ```bash
-   docker-compose up --build
-   ```
-
-2. El backend estará disponible en `http://localhost:8000`.
-
-3. Para crear un superusuario (opcional):
-   ```bash
-   docker-compose exec web python manage.py createsuperuser
-   ```
-
-## Ejecutar el Frontend Web
-
-1. Instala dependencias:
-   ```bash
-   cd uisrooms-web
-   npm install
-   ```
-
-2. Ejecuta la aplicación:
-   ```bash
-   npm start
-   ```
-
-3. Abre `http://localhost:3000` en tu navegador.
-
-Nota: Asegúrate de que el backend esté corriendo en `http://localhost:8000`.
-
-## Ejecutar la App Móvil
-
-1. Abre el proyecto en Android Studio:
-   - Importa la carpeta `UISroomsMobile`.
-
-2. Configura la URL de la API en `ApiService.kt` si es necesario (por defecto usa `http://10.0.2.2:8000/` para emulador).
-
-3. Ejecuta en un emulador o dispositivo.
-
-## Despliegue en Producción
-
-- Cambia `DEBUG=0` en `.env`.
-- Configura `ALLOWED_HOSTS` con tu dominio.
-- Usa un servidor como Gunicorn o similar.
-- Para el frontend, construye con `npm run build` y sirve los archivos estáticos.
-- Para la app móvil, genera el APK.
-
-## Estructura del Proyecto
-
-- `config/`: Configuración de Django.
-- `usuarios/`, `espacios/`, etc.: Apps de Django.
-- `uisrooms-web/`: Frontend React.
-- `UISroomsMobile/`: App Android.
-- `docker-compose.yml`: Configuración de contenedores.
-
-## Contribución
-
-1. Crea una rama para tus cambios.
-2. Realiza commits descriptivos.
-3. Envía un pull request.
-
-## Licencia
-
-[Especifica la licencia si aplica]
+Dime si quieres que añada `docs/DEV.md` y lo suba al repo.
