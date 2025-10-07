@@ -2,10 +2,8 @@ version: '3.9'
 services:
   db:
     image: postgres:15
-    environment:
-      POSTGRES_USER: uisrooms
-      POSTGRES_PASSWORD: uisrooms123
-      POSTGRES_DB: uisrooms_db
+    env_file:
+      - .env
     ports:
       - "5432:5432"
     volumes:
@@ -24,8 +22,9 @@ services:
     environment:
       POSTGRES_HOST: db
     command: >
-      sh -c "python manage.py migrate --noinput &&
-             python manage.py runserver 0.0.0.0:8000"
+      sh -c "python manage.py migrate --noinput && \
+             python manage.py collectstatic --noinput && \
+             gunicorn config.wsgi:application --bind 0.0.0.0:8000"
     volumes:
       - .:/app:cached
     ports:
