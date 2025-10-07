@@ -117,6 +117,62 @@ Archivos útiles en el repo
 
 -----
 
+Error común: "database \"uisrooms_db\" does not exist"
+-----------------------------------------------------
+
+Si un colaborador clona el repositorio y sigue las instrucciones, puede encontrarse con un error como:
+
+django.db.utils.OperationalError: FATAL:  database "uisrooms_db" does not exist
+
+Causas comunes:
+- El servicio Postgres ya tenía un volumen persistente creado previamente con otras credenciales/nombre de base de datos.
+- El archivo `.env` no existe o sus variables `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` no coinciden con la inicialización del volumen de Postgres.
+
+Soluciones (elige una):
+
+1) Asegurarse de que `.env` exista y tenga las variables correctas
+
+- Desde la raíz del repo copia el ejemplo y edítalo:
+
+	PowerShell:
+
+	Copy-Item .env.example .env
+	# luego editar .env en tu editor preferido y añadir SECRET_KEY, POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD
+
+2) Volver a inicializar el servicio Postgres (elimina el volumen persistente)
+
+Nota: esto borra los datos existentes en la base de datos del contenedor. Úsalo sólo si no necesitas conservar datos.
+
+
+PowerShell (desde la raíz del repo):
+
+	docker-compose down -v
+	docker-compose up --build
+
+O (recomendado en Windows) usa el helper con confirmación incluido:
+
+	.\scripts\reset-db.ps1
+
+Esto fuerza a Docker a recrear el volumen `postgres_data` y Postgres se inicializará con las variables que hayas puesto en `.env`.
+
+3) (Alternativa) Crear la base de datos manualmente en el contenedor Postgres existente
+
+Si no quieres borrar el volumen, puedes entrar en el contenedor y crear la base de datos con psql (reemplaza USER y DB por los valores que uses en `.env`):
+
+PowerShell:
+
+	docker-compose exec db psql -U <POSTGRES_USER> -c "CREATE DATABASE <POSTGRES_DB>;"
+
+Ejemplo:
+
+	docker-compose exec db psql -U uisrooms -c "CREATE DATABASE uisrooms_db;"
+
+Después de crear la DB manualmente, vuelve a iniciar o recargar el servicio web:
+
+	docker-compose up --build
+
+-----
+
 Si quieres, puedo:
 - Añadir `docs/DEV.md` con esta guía paso a paso (y lo commit/pusheo).
 - Añadir endpoint `/healthz` en Django para health checks.

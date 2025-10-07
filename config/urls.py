@@ -25,6 +25,7 @@ from objetos.views import ObjetoPerdidoViewSet
 from notificaciones.views import NotificacionViewSet
 from django.urls import path, include
 from rest_framework_simplejwt.views import (TokenObtainPairView, TokenRefreshView,)
+from django.views.generic import TemplateView
 
 router = routers.DefaultRouter()
 # Usuarios
@@ -54,4 +55,6 @@ urlpatterns = [
     # Rutas de JWT:
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    # Serve React index.html at root (if build exists)
+    path('', TemplateView.as_view(template_name='index.html'), name='home'),
 ]
