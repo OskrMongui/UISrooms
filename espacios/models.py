@@ -1,22 +1,19 @@
 # espacios/models.py
 import uuid
 from django.db import models
-from django.db import models
 from django.contrib.postgres.fields import ArrayField
 
 class TipoEspacio(models.TextChoices):
-    AUDITORIO = 'auditorio', 'Auditorio'
-    SALON = 'salon', 'Salón'
-    LABORATORIO = 'laboratorio', 'Laboratorio'
-    TALLER = 'taller', 'Taller'
-    OTRO = 'otro', 'Otro'
+    AULA = 'aula', 'Aulas'
+    LABORATORIO = 'laboratorio', 'Laboratorios'
+    SALA = 'sala', 'Salas'
 
 class Espacio(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     codigo = models.CharField(max_length=50, unique=True)
     nombre = models.CharField(max_length=200)
     descripcion = models.TextField(blank=True)
-    tipo = models.CharField(max_length=20, choices=TipoEspacio.choices, default=TipoEspacio.SALON)
+    tipo = models.CharField(max_length=20, choices=TipoEspacio.choices, default=TipoEspacio.AULA)
     capacidad = models.IntegerField(null=True, blank=True)
     ubicacion = models.TextField(blank=True)
     recursos = ArrayField(models.CharField(max_length=100), default=list, blank=True)

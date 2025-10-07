@@ -33,3 +33,6 @@ node_modules/
 .DS_Store
 temp_token.json
 .mvn/
+uisrooms-web/build/
+archived/
+uisrooms-web/.env

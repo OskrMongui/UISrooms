@@ -1,3 +1,46 @@
+# UISrooms (Backend + Web)
+
+Este repositorio contiene la parte backend (Django + PostgreSQL) y el frontend web (React) del proyecto UISrooms.
+
+Contenido relevante que se mantiene:
+- `config/`, `usuarios/`, `espacios/`, `reservas/`, `llaves/`, `incidencias/`, `objetos/`, `notificaciones/` (Django apps)
+- `manage.py`, `docker-compose.yml`, `requirements.txt`
+- `uisrooms-web/` (React frontend)
+
+Carpetas y artefactos no relacionados con la entrega actual han sido removidos para simplificar el repositorio.
+
+Requisitos previos
+- Docker y Docker Compose
+- Node.js (para el frontend web)
+
+Levantar el backend con Docker
+1. Copia variables de entorno:
+```powershell
+Copy-Item .env.example .env
+```
+2. Levanta contenedores:
+```powershell
+docker-compose up --build
+```
+3. Backend disponible en `http://localhost:8000`.
+
+Levantar el frontend (desarrollo)
+1. Ir a la carpeta del frontend e instalar dependencias:
+```powershell
+Set-Location .\uisrooms-web
+npm install
+```
+2. Iniciar el servidor de desarrollo:
+```powershell
+npm start
+```
+3. Frontend en `http://localhost:3000`.
+
+Notas
+- Asegúrate de que `.env` contiene `SECRET_KEY` y las variables de Postgres necesarias.
+- `uisrooms-web/.env` puede incluir `REACT_APP_API_URL=http://localhost:8000/api/`
+
+Si necesitas que restaure la app móvil o archivos eliminados, puedo crear un zip/archivo con lo eliminado (si siguen disponibles localmente) o ayudarte a recuperar desde otra rama.
 # UISrooms Backend
 
 Este proyecto es una aplicación full-stack para la gestión de salas y reservas de la UIS, compuesto por:

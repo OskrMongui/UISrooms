@@ -21,6 +21,11 @@ import ObjetoEdit from './components/ObjetoEdit';
 import NotificacionesList from './components/NotificacionesList';
 import NotificacionCreate from './components/NotificacionCreate';
 import NotificacionEdit from './components/NotificacionEdit';
+import AdminSpacesList from './components/AdminSpacesList';
+import SpaceCreate from './components/SpaceCreate';
+import SpaceEdit from './components/SpaceEdit';
+import SpaceScheduleCreate from './components/SpaceScheduleCreate';
+import SpaceScheduleEdit from './components/SpaceScheduleEdit';
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
 
@@ -49,6 +54,11 @@ function App() {
             <Route path="/notificaciones" element={<ProtectedRoute><NotificacionesList /></ProtectedRoute>} />
             <Route path="/notificaciones/create" element={<ProtectedRoute><NotificacionCreate /></ProtectedRoute>} />
             <Route path="/notificaciones/:id/edit" element={<ProtectedRoute><NotificacionEdit /></ProtectedRoute>} />
+            <Route path="/admin/spaces" element={<ProtectedRoute admin><AdminSpacesList /></ProtectedRoute>} />
+            <Route path="/admin/spaces/create" element={<ProtectedRoute admin><SpaceCreate /></ProtectedRoute>} />
+            <Route path="/admin/spaces/:id/edit" element={<ProtectedRoute admin><SpaceEdit /></ProtectedRoute>} />
+            <Route path="/admin/spaces/:id/schedule" element={<ProtectedRoute admin><SpaceScheduleCreate /></ProtectedRoute>} />
+            <Route path="/admin/spaces/:id/schedule/edit" element={<ProtectedRoute admin><SpaceScheduleEdit /></ProtectedRoute>} />
           </Routes>
         </div>
       </div>

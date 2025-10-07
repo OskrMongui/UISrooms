@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { isAdmin } from '../utils/auth';
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -7,6 +8,7 @@ const Navbar = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
     navigate('/');
   };
 
@@ -40,6 +42,11 @@ const Navbar = () => {
             <li className="nav-item">
               <Link className="nav-link" to="/notificaciones">Notificaciones</Link>
             </li>
+            {token && isAdmin() && (
+              <li className="nav-item">
+                <Link className="nav-link" to="/admin/spaces">Admin Espacios</Link>
+              </li>
+            )}
           </ul>
           <ul className="navbar-nav">
             {token ? (

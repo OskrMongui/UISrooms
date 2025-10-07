@@ -1,5 +1,0 @@
-- [x] Remove backup_code directory
-- [x] Add .mvn/ to .gitignore
-- [ ] Add all untracked files
-- [ ] Commit changes
-- [ ] Push to origin/main

@@ -16,6 +16,9 @@ const Login = () => {
         password,
       });
       localStorage.setItem('token', response.data.access);
+      // Fetch user data
+      const userResponse = await api.get('usuarios/me/');
+      localStorage.setItem('user', JSON.stringify(userResponse.data));
       navigate('/');
     } catch (err) {
       setError('Credenciales inválidas');
