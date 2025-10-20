@@ -1,181 +1,131 @@
-# UISrooms (Backend + Web)
+# UISrooms
 
-Este repositorio contiene la parte backend (Django + PostgreSQL) y el frontend web (React) del proyecto UISrooms.
+Monorepo que agrupa el backend (Django + PostgreSQL) y el frontend web (React) del proyecto UISrooms.
 
-Contenido relevante que se mantiene:
-- `config/`, `usuarios/`, `espacios/`, `reservas/`, `llaves/`, `incidencias/`, `objetos/`, `notificaciones/` (Django apps)
-- `manage.py`, `docker-compose.yml`, `requirements.txt`
-- `uisrooms-web/` (React frontend)
+## Estructura
 
-Carpetas y artefactos no relacionados con la entrega actual han sido removidos para simplificar el repositorio.
+- `backend/`: proyecto Django (config, aplicaciones internas, scripts de utilidad, archivos `.env`, `requirements.txt`, etc.).
+- `frontend/`: aplicacion React (codigo fuente en `src/`, build en `build/`, dependencias en `node_modules/`).
+- `docker/`: recursos complementarios para contenedores (por ejemplo, inicializacion de Postgres).
+- `.github/`, `.vscode/`: automatizaciones y configuracion de editor.
+- `Dockerfile`, `docker-compose.yml`, `start-dev.ps1`: utilidades en la raiz para orquestar ambos lados.
 
-Requisitos previos
-- Docker y Docker Compose
-- Node.js (para el frontend web)
+## Requisitos previos
 
-# UISrooms (Backend + Web)
+- Docker y Docker Compose.
+- Node.js y npm (para ejecutar el frontend en modo desarrollo).
+- PowerShell (Windows) o terminal compatible.
 
-Este repo contiene el backend (Django + PostgreSQL) y el frontend web (React). Aquí tienes instrucciones paso a paso para que cualquiera que clone el repositorio pueda ejecutar el proyecto en modo desarrollo y en modo producción local.
+## Configuracion inicial
 
------
+1. Clonar el proyecto.
+2. Copiar las variables de entorno de ejemplo del backend:
 
-Requisitos previos
-- Docker y Docker Compose
-- Node.js y npm (para el frontend web)
-- PowerShell (Windows) o una terminal compatible
+   ```powershell
+   Copy-Item .\backend\.env.example .\backend\.env
+   ```
 
------
+   > En Linux/macOS usa `cp backend/.env.example backend/.env`.
 
-Preparación (una sola vez)
-1. Clona el repositorio:
+3. Editar `backend/.env` y anadir:
+   - `SECRET_KEY` (usar `python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"` para generar una).
+   - Ajustar credenciales de base de datos si no se usan los valores por defecto del `docker-compose`.
+4. Instalar dependencias del frontend:
 
-```bash
-git clone <url-del-repo>
-cd UISrooms
-```
+   ```powershell
+   Push-Location frontend
+   npm install
+   Pop-Location
+   ```
 
-2. Copia variables de entorno de ejemplo:
+5. (Opcional) Crear y activar un entorno virtual para Python antes de instalar dependencias del backend:
 
-Windows (PowerShell):
+   ```powershell
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   pip install -r backend\requirements.txt
+   ```
+
+   > En Linux/macOS usa `python3 -m venv .venv` y `source .venv/bin/activate`.
+
+## Verificacion rapida
+
+Si quieres validar que el proyecto compila correctamente antes de hacer un push o empaquetar:
+
 ```powershell
-Copy-Item .env.example .env
-```
-Linux/macOS:
-```bash
-cp .env.example .env
+npm --prefix frontend run build
+python backend\manage.py check
 ```
 
-3. Edita `.env` y añade una `SECRET_KEY` (y ajustar credenciales de la DB si no usas Docker defaults).
+El build de React puede emitir advertencias sobre variables no utilizadas (`start` en `Home.js` y `jwtDecode` en `utils/auth.js`). Son avisos sin impacto funcional; puedes limpiarlos eliminando las variables o aplicando `// eslint-disable-next-line` donde corresponda.
 
------
+## Desarrollo con recarga
 
-Modo desarrollo (hot-reload) — recomendado para programar
+Se recomienda trabajar con dos terminales.
 
-Se recomienda abrir dos terminales.
+- **Terminal A - Backend** (Docker + Django):
 
-Terminal A — Backend (Docker):
-```powershell
-# desde la raíz del repo
-docker-compose up --build
-```
+  ```powershell
+  docker-compose up --build
+  ```
 
-Terminal B — Frontend (hot-reload):
-```powershell
-Set-Location .\uisrooms-web
-npm install    # sólo la primera vez o si cambias package.json
-npm start
-```
+- **Terminal B - Frontend** (React con hot reload):
 
-- Frontend en: http://localhost:3000 (hot-reload)
-- Backend (API) en: http://localhost:8000 (APIs en /api/)
+  ```powershell
+  Set-Location .\frontend
+  npm install      # solo la primera vez o si cambia package.json
+  npm start
+  ```
 
-Opcional: uso del helper (Windows PowerShell)
-- Ejecutar `.\\start-dev.ps1` desde la raíz abrirá dos ventanas para backend y frontend automáticamente. Si PowerShell bloquea la ejecución de scripts, habilita:
+Servicios disponibles:
+- Frontend React en <http://localhost:3000>
+- API Django en <http://localhost:8000>
+
+### Atajo en Windows
+
+Ejecutar `.\start-dev.ps1` desde la raiz abre dos ventanas de PowerShell (backend y frontend). Si PowerShell bloquea scripts, habilita:
 
 ```powershell
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
 
------
+## Produccion local (servir build de React desde Django)
 
-Modo producción local (servir la SPA desde Django)
+1. Construir el frontend:
 
-1. Genera la build del frontend:
+   ```powershell
+   Set-Location .\frontend
+   npm install
+   npm run build
+   Set-Location ..
+   ```
 
-```powershell
-Set-Location .\uisrooms-web
-npm install
-npm run build
-Set-Location ..
-```
+2. Levantar contenedores:
 
-2. Levanta Docker (el contenedor web ejecutará migrate, collectstatic y gunicorn):
+   ```powershell
+   docker-compose up --build
+   ```
 
-```powershell
-docker-compose up --build
-```
+3. Visitar <http://localhost:8000>. Django servira la SPA (`build/index.html`) y las APIs REST.
 
-3. Abre: http://localhost:8000 — ahora Django sirve la SPA (`index.html`) y las APIs en `/api/`.
+## Problemas comunes
 
------
+- **database "uisrooms_db" does not exist**  
+  Generalmente ocurre por un volumen de Postgres inicializado con otras credenciales. Opciones:
+  1. Verificar que `backend/.env` exista y contenga `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`.
+  2. Reinicializar el volumen: `docker-compose down -v && docker-compose up --build`.
+  3. Usar el helper `.\backend\scripts\reset-db.ps1`.
 
-Comprobaciones y solución de problemas
-- Si el dev-server no arranca en 3000: verifica puertos ocupados
+- **Errores SECRET_KEY**  
+  Asegurate de que `backend/.env` este cargado con una llave valida antes de iniciar Django.
 
-```powershell
-netstat -ano | findstr :3000
-```
+- **Frontend sin build**  
+  En modo desarrollo usa <http://localhost:3000>. Para servir desde Django, ejecuta `npm run build` dentro de `frontend/`.
 
-- Si ves 404 en `/` antes de generar la build del frontend, es normal en modo backend-only (usa http://localhost:3000 en desarrollo). Después de `npm run build` y `docker-compose up`, Django servirá la SPA en `/`.
-- Si Django lanza error por `SECRET_KEY`, asegúrate de tener `.env` con `SECRET_KEY`.
+## Siguientes pasos posibles
 
------
+- Documentacion adicional (`docs/`).
+- Endpoint `/healthz` para health checks.
+- Ajustes de cache en WhiteNoise para produccion.
 
-Archivos útiles en el repo
-- `start-dev.ps1`: helper PowerShell para abrir backend y frontend en desarrollo.
-- `uisrooms-web/.env.example`: ejemplo de variable `REACT_APP_API_URL`.
-
------
-
-Error común: "database \"uisrooms_db\" does not exist"
------------------------------------------------------
-
-Si un colaborador clona el repositorio y sigue las instrucciones, puede encontrarse con un error como:
-
-django.db.utils.OperationalError: FATAL:  database "uisrooms_db" does not exist
-
-Causas comunes:
-- El servicio Postgres ya tenía un volumen persistente creado previamente con otras credenciales/nombre de base de datos.
-- El archivo `.env` no existe o sus variables `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` no coinciden con la inicialización del volumen de Postgres.
-
-Soluciones (elige una):
-
-1) Asegurarse de que `.env` exista y tenga las variables correctas
-
-- Desde la raíz del repo copia el ejemplo y edítalo:
-
-	PowerShell:
-
-	Copy-Item .env.example .env
-	# luego editar .env en tu editor preferido y añadir SECRET_KEY, POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD
-
-2) Volver a inicializar el servicio Postgres (elimina el volumen persistente)
-
-Nota: esto borra los datos existentes en la base de datos del contenedor. Úsalo sólo si no necesitas conservar datos.
-
-
-PowerShell (desde la raíz del repo):
-
-	docker-compose down -v
-	docker-compose up --build
-
-O (recomendado en Windows) usa el helper con confirmación incluido:
-
-	.\scripts\reset-db.ps1
-
-Esto fuerza a Docker a recrear el volumen `postgres_data` y Postgres se inicializará con las variables que hayas puesto en `.env`.
-
-3) (Alternativa) Crear la base de datos manualmente en el contenedor Postgres existente
-
-Si no quieres borrar el volumen, puedes entrar en el contenedor y crear la base de datos con psql (reemplaza USER y DB por los valores que uses en `.env`):
-
-PowerShell:
-
-	docker-compose exec db psql -U <POSTGRES_USER> -c "CREATE DATABASE <POSTGRES_DB>;"
-
-Ejemplo:
-
-	docker-compose exec db psql -U uisrooms -c "CREATE DATABASE uisrooms_db;"
-
-Después de crear la DB manualmente, vuelve a iniciar o recargar el servicio web:
-
-	docker-compose up --build
-
------
-
-Si quieres, puedo:
-- Añadir `docs/DEV.md` con esta guía paso a paso (y lo commit/pusheo).
-- Añadir endpoint `/healthz` en Django para health checks.
-- Ajustar headers/caching en WhiteNoise para producción.
-
-Dime si quieres que añada `docs/DEV.md` y lo suba al repo.
+Indica si te interesa que anadamos alguno de estos ajustes.

@@ -21,6 +21,7 @@ wheels/
 *.egg
 MANIFEST
 .env
+backend/.env
 .venv
 env/
 venv/
@@ -33,7 +34,7 @@ node_modules/
 .DS_Store
 temp_token.json
 .mvn/
-uisrooms-web/build/
+frontend/build/
 archived/
-uisrooms-web/.env
-staticfiles/
+frontend/.env
+backend/staticfiles/

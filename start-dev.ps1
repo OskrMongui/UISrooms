@@ -10,6 +10,6 @@ Start-Process pwsh -ArgumentList "-NoExit", "-Command", "Set-Location -LiteralPa
 Start-Sleep -Seconds 2
 
 Write-Host "Starting frontend dev server (npm start) in a new PowerShell window..."
-Start-Process pwsh -ArgumentList "-NoExit", "-Command", "Set-Location -LiteralPath '$(Resolve-Path .)\uisrooms-web'; npm install; npm start"
+Start-Process pwsh -ArgumentList "-NoExit", "-Command", "Set-Location -LiteralPath '$(Resolve-Path .)\frontend'; npm install; npm start"
 
 Write-Host "Laventado: backend y frontend (revisa las ventanas abiertas)"

@@ -1,0 +1,335 @@
+.App {
+  background-color: #f8f9fa;
+  min-height: 100vh;
+}
+
+/* Custom theme colors */
+.bg-primary-custom {
+  background-color: #28a745 !important;
+}
+
+.text-primary-custom {
+  color: #28a745 !important;
+}
+
+.btn-primary-custom {
+  background-color: #28a745;
+  border-color: #28a745;
+}
+
+.btn-primary-custom:hover {
+  background-color: #218838;
+  border-color: #1e7e34;
+}
+
+.card {
+  border: none;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.navbar-brand {
+  font-weight: bold;
+}
+
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 1055;
+}
+
+.navbar.navbar-light {
+  backdrop-filter: blur(6px);
+}
+
+.navbar .nav-link {
+  border-radius: 999px;
+  color: #198754;
+  font-weight: 500;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.navbar .nav-link:hover,
+.navbar .nav-link:focus {
+  background-color: rgba(25, 135, 84, 0.12);
+  color: #146c43;
+}
+
+.navbar .nav-link.active,
+.navbar .nav-link.active:focus,
+.navbar .nav-link.active:hover {
+  color: #ffffff;
+  background-color: #198754;
+}
+
+.dropdown-menu-xl {
+  min-width: 22rem;
+}
+
+.dropdown-menu-xl .dropdown-item {
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.dropdown-menu-xl .dropdown-item:hover:not(.disabled) {
+  background-color: rgba(25, 135, 84, 0.08);
+  transform: translateX(4px);
+}
+
+.dropdown-menu-xl .dropdown-item.active-item {
+  background-color: rgba(25, 135, 84, 0.15);
+  color: #146c43;
+}
+
+.dropdown-menu-xl .dropdown-item .badge {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.dropdown-menu-xl .dropdown-item.disabled {
+  opacity: 0.7;
+}
+
+.navbar .dropdown-menu {
+  z-index: 1070;
+}
+
+.transition-all {
+  transition: all 0.2s ease;
+}
+
+@media (max-width: 991.98px) {
+  .dropdown-menu-xl {
+    width: calc(100vw - 2rem);
+    margin: 0 auto;
+  }
+}
+
+.home {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.home-hero {
+  background: linear-gradient(135deg, #2ebf6e 0%, #28a745 100%);
+}
+
+.home .card h2 {
+  color: #28a745;
+}
+
+.home .list-group-item-action:hover {
+  border-color: #28a745;
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.15);
+}
+
+.space-block-event {
+  background-color: #dc3545 !important;
+  border: 1px solid #dc3545 !important;
+  color: #fff !important;
+}
+
+.admin-spaces h1 {
+  font-weight: 600;
+}
+
+.admin-spaces-toolbar .form-control,
+.admin-spaces-toolbar .form-select {
+  border-radius: 0.75rem;
+  border-color: #e5e9ed;
+}
+
+.admin-spaces-toolbar .btn {
+  border-radius: 0.75rem;
+}
+
+.stats-card {
+  border-radius: 1rem;
+  background-color: #ffffff;
+}
+
+.stats-card .display-number {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #1f7a3e;
+}
+
+.space-card {
+  border-radius: 1.25rem;
+  border: 1px solid #e6eee8;
+  padding: 1.25rem;
+  background-color: #ffffff;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.space-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 35px rgba(40, 167, 69, 0.15);
+}
+
+.badge-soft {
+  background-color: rgba(40, 167, 69, 0.16);
+  color: #1f7a3e;
+  font-weight: 600;
+}
+
+.badge-soft-secondary {
+  background-color: rgba(73, 80, 87, 0.12);
+  color: #495057;
+  font-weight: 600;
+}
+
+.space-card-title h5 {
+  font-weight: 600;
+}
+
+.space-card-resources {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.resource-pill {
+  background-color: rgba(40, 167, 69, 0.12);
+  color: #2f855a;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 0.2rem 0.75rem;
+  font-size: 0.75rem;
+}
+
+.resource-pill.more-pill {
+  background-color: rgba(73, 80, 87, 0.1);
+  color: #495057;
+}
+
+.space-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.space-card-actions .btn {
+  flex: 1 1 30%;
+  border-radius: 0.7rem;
+}
+
+@media (max-width: 767.98px) {
+  .space-card-actions {
+    flex-direction: column;
+  }
+
+  .space-card-actions .btn {
+    flex: 1 1 100%;
+  }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem 1.5rem;
+  border-radius: 1.25rem;
+  background: linear-gradient(135deg, rgba(40, 167, 69, 0.12), rgba(13, 110, 253, 0.12));
+  border: 1px dashed rgba(40, 167, 69, 0.3);
+}
+
+.empty-state h4 {
+  font-weight: 600;
+}
+
+.space-availability h1 {
+  font-weight: 600;
+}
+
+.space-availability .space-calendar {
+  border: 1px solid #e6eee8;
+  border-radius: 1rem;
+  overflow: hidden;
+  background-color: #fff;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+}
+
+.space-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  align-items: center;
+}
+
+.space-legend .legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #495057;
+}
+
+.legend-color {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 0.3rem;
+  display: inline-block;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.legend-color.legend-free {
+  background-color: rgba(40, 167, 69, 0.18);
+}
+
+.legend-color.legend-block {
+  background-color: rgba(220, 53, 69, 0.8);
+}
+
+.legend-color.legend-reservation {
+  background-color: rgba(253, 126, 20, 0.8);
+}
+
+.space-form .card,
+.reservation-form .card {
+  border-radius: 1rem;
+}
+
+.space-form .card-header,
+.reservation-form .card-header {
+  border-bottom: none;
+  background-color: #ffffff;
+}
+
+.space-form .space-form-body .card + .card,
+.reservation-form .space-form-body .card + .card {
+  margin-top: 1.5rem;
+}
+
+.space-form .space-form-body .card-body,
+.reservation-form .space-form-body .card-body {
+  padding: 1.5rem;
+}
+
+.space-form .card ul,
+.reservation-form .card ul {
+  margin: 0;
+  padding-left: 1rem;
+}
+
+.reservation-form .alert-info,
+.reservation-form .alert-success,
+.reservation-form .alert-danger {
+  border-radius: 0.75rem;
+}
+
+.spaces-home .hero-card {
+  background: linear-gradient(135deg, rgba(40, 167, 69, 0.9), rgba(25, 135, 84, 0.75));
+  border-radius: 1.5rem;
+  padding: 2rem;
+  color: #fff;
+  box-shadow: 0 12px 24px rgba(40, 167, 69, 0.25);
+}
+
+.spaces-home .hero-card h1 {
+  font-weight: 600;
+}
+
+.spaces-home .hero-card .btn {
+  border-radius: 999px;
+  padding-inline: 1.5rem;
+}

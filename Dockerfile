@@ -10,12 +10,13 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y build-essential libpq-dev gcc \
     && rm -rf /var/lib/apt/lists/*
 
-# Copiar requirements y proyecto
-COPY requirements.txt /app/requirements.txt
+# Copiar requirements del backend y proyecto
+COPY backend/requirements.txt /app/requirements.txt
 RUN pip install --upgrade pip
 RUN pip install -r /app/requirements.txt
 
-COPY . /app
+# Copiar codigo del backend
+COPY backend/ /app
 
 # Crear usuario no root opcional (evita permisos con volumenes en algunos hosts)
 # RUN useradd -m appuser && chown -R appuser /app
