@@ -72,6 +72,27 @@ class ReservaViewSet(viewsets.ModelViewSet):
             comentario=comentario or "",
         )
 
+    def _can_delete_reserva(self, user, reserva):
+        if not user or not getattr(user, "is_authenticated", False):
+            return False
+        if getattr(user, "is_superuser", False):
+            return True
+        if reserva.usuario_id and reserva.usuario_id == getattr(user, "id", None):
+            return True
+        if reserva.creado_por_id and reserva.creado_por_id == getattr(user, "id", None):
+            return True
+        return self._can_manage_reserva(user, reserva)
+
+    def destroy(self, request, *args, **kwargs):
+        reserva = self.get_object()
+        if not self._can_delete_reserva(request.user, reserva):
+            return Response(
+                {"detail": "No tienes permisos para eliminar esta reserva."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+        self.perform_destroy(reserva)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
     @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
     def aprobar(self, request, pk=None):
         reserva = self.get_object()

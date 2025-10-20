@@ -23,7 +23,7 @@ const formatDateTime = (value) => {
   return new Date(value).toLocaleString();
 };
 
-const ReservationCard = ({ reservation }) => {
+const ReservationCard = ({ reservation, onDelete, deletingId }) => {
   const status = String(reservation.estado || '').toLowerCase();
   const statusVariant = STATUS_VARIANTS[status] || 'secondary';
   const statusLabel = reservation.estado_display || STATUS_LABELS[status] || reservation.estado || 'N/D';
@@ -80,9 +80,23 @@ const ReservationCard = ({ reservation }) => {
           </div>
         </div>
 
-        <div className="mt-auto pt-3 d-flex justify-content-between align-items-center text-muted small">
-          <span>{isUpcoming ? 'Reserva proxima' : isPast ? 'Reserva pasada' : 'Reserva en curso'}</span>
-          <span>Solicitada: {formatDateTime(reservation.creado_en)}</span>
+        <div className="mt-auto pt-3">
+          <div className="d-flex justify-content-between align-items-center text-muted small">
+            <span>{isUpcoming ? 'Reserva proxima' : isPast ? 'Reserva pasada' : 'Reserva en curso'}</span>
+            <span>Solicitada: {formatDateTime(reservation.creado_en)}</span>
+          </div>
+          {onDelete ? (
+            <div className="d-flex justify-content-end mt-3">
+              <button
+                type="button"
+                className="btn btn-sm btn-outline-danger"
+                onClick={() => onDelete(reservation.id)}
+                disabled={deletingId === reservation.id}
+              >
+                {deletingId === reservation.id ? 'Eliminando...' : 'Eliminar'}
+              </button>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
@@ -93,6 +107,9 @@ const ReservationsList = () => {
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [actionMessage, setActionMessage] = useState('');
+  const [deletingId, setDeletingId] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('todos');
 
@@ -109,6 +126,36 @@ const ReservationsList = () => {
     };
     fetchReservations();
   }, []);
+
+  const handleDelete = async (reservationId) => {
+    if (!reservationId) {
+      return;
+    }
+
+    const confirmed = window.confirm('¿Deseas eliminar esta reserva? Esta accion no se puede deshacer.');
+    if (!confirmed) {
+      return;
+    }
+
+    setActionError('');
+    setActionMessage('');
+    setDeletingId(reservationId);
+
+    try {
+      await api.delete(`reservas/${reservationId}/`);
+      setReservations((prev) => prev.filter((reservation) => String(reservation.id) !== String(reservationId)));
+      setActionMessage('Reserva eliminada correctamente.');
+    } catch (err) {
+      const detail =
+        err.response?.data?.detail ||
+        err.response?.data?.non_field_errors?.[0] ||
+        err.response?.data ||
+        'No se pudo eliminar la reserva.';
+      setActionError(typeof detail === 'string' ? detail : 'No se pudo eliminar la reserva.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const stats = useMemo(() => {
     const total = reservations.length;
@@ -233,6 +280,9 @@ const ReservationsList = () => {
         </div>
       </div>
 
+      {actionMessage ? <div className="alert alert-success">{actionMessage}</div> : null}
+      {actionError ? <div className="alert alert-danger">{actionError}</div> : null}
+
       <div className="card border-0 shadow-sm mb-4">
         <div className="card-body">
           <div className="d-flex flex-wrap gap-2 align-items-center">
@@ -283,7 +333,11 @@ const ReservationsList = () => {
         <div className="row g-4">
           {filteredReservations.map((reservation) => (
             <div key={reservation.id} className="col-xl-4 col-lg-6">
-              <ReservationCard reservation={reservation} />
+              <ReservationCard
+                reservation={reservation}
+                onDelete={handleDelete}
+                deletingId={deletingId}
+              />
             </div>
           ))}
         </div>

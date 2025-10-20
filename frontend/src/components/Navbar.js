@@ -76,15 +76,7 @@ const Navbar = () => {
             description: 'Consulta tus próximas reservas y su estado.',
             requiresAuth: true,
             activeMatch: '/reservations',
-          },
-          {
-            to: '/reservations/create',
-            label: 'Nueva reserva',
-            description: 'Agenda un espacio con disponibilidad garantizada.',
-            requiresAuth: true,
-            highlight: 'Nuevo',
-            activeMatch: '/reservations/create',
-          },
+          },          
         ],
       },
       {
@@ -359,14 +351,14 @@ const Navbar = () => {
               <>
                 <li className="nav-item">
                   <NavLink
-                    to="/reservations/create"
+                    to="/spaces"
                     className="btn btn-success btn-sm px-3 fw-semibold shadow-sm"
                     onClick={() => {
                       closeAllMenus();
                       setIsNavCollapsed(true);
                     }}
                   >
-                    Nueva reserva
+                    Reservar espacio
                   </NavLink>
                 </li>
                 <li

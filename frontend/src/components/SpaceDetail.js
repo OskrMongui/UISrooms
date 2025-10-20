@@ -42,6 +42,15 @@ const parseTime = (timeString) => {
   return moment(normalized, 'HH:mm:ss');
 };
 
+const parsePositiveInt = (value) => {
+  const number = Number(value);
+  if (!Number.isFinite(number)) {
+    return null;
+  }
+  const intValue = Math.floor(number);
+  return intValue > 0 ? intValue : null;
+};
+
 const clampToWorkingHours = (m) => {
   if (m.hour() < CALENDAR_START_HOUR) {
     m.hour(CALENDAR_START_HOUR).minute(0).second(0).millisecond(0);
@@ -169,10 +178,11 @@ const SpaceDetail = () => {
     // Reservations
     reservations.forEach((reservation) => {
       if (!reservation.fecha_inicio || !reservation.fecha_fin) return;
-      const startMoment = moment(reservation.fecha_inicio);
-      const endMoment = moment(reservation.fecha_fin);
-      if (!startMoment.isValid() || !endMoment.isValid()) return;
-      if (startMoment.isAfter(rangeEnd) || endMoment.isBefore(rangeStart)) return;
+
+      const baseStart = moment(reservation.fecha_inicio);
+      const baseEnd = moment(reservation.fecha_fin);
+      if (!baseStart.isValid() || !baseEnd.isValid()) return;
+
       const titleParts = [];
       if (reservation.usuario && reservation.usuario.first_name) {
         titleParts.push(reservation.usuario.first_name);
@@ -183,13 +193,44 @@ const SpaceDetail = () => {
       if (!titleParts.length) {
         titleParts.push('Reserva confirmada');
       }
-      eventList.push({
-        title: titleParts.join(' - '),
-        start: startMoment.toDate(),
-        end: endMoment.toDate(),
-        resource: { type: 'reservation', payload: reservation },
-        allDay: false,
-      });
+      const title = titleParts.join(' - ');
+
+      const recurrencia = (reservation.metadata && reservation.metadata.recurrencia) || {};
+      const occurrenceNumber = parsePositiveInt(recurrencia.ocurrencia) || 1;
+      const totalOccurrences =
+        parsePositiveInt(recurrencia.total_ocurrencias) ||
+        parsePositiveInt(recurrencia.semanas) ||
+        1;
+
+      const addEvent = (startMoment, endMoment, occurrenceIndex) => {
+        if (!startMoment.isValid() || !endMoment.isValid()) return;
+        if (startMoment.isAfter(rangeEnd) || endMoment.isBefore(rangeStart)) return;
+
+        eventList.push({
+          title,
+          start: startMoment.toDate(),
+          end: endMoment.toDate(),
+          resource: {
+            type: 'reservation',
+            payload: reservation,
+            occurrence: occurrenceIndex,
+            totalOccurrences,
+          },
+          allDay: false,
+        });
+      };
+
+      if (reservation.recurrente && totalOccurrences > 1) {
+        if (occurrenceNumber > 1) {
+          return;
+        }
+        for (let index = 0; index < totalOccurrences; index += 1) {
+          addEvent(baseStart.clone().add(index, 'weeks'), baseEnd.clone().add(index, 'weeks'), index + 1);
+        }
+        return;
+      }
+
+      addEvent(baseStart, baseEnd, occurrenceNumber);
     });
 
     return eventList;

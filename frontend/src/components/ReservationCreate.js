@@ -4,33 +4,23 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 
 const WEEKDAY_CODES = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
 
-const formatDateForRrule = (date) => {
-  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
-    return null;
-  }
-  const iso = date.toISOString().split('.')[0];
-  return `${iso.replace(/[-:]/g, '')}Z`;
-};
+const SEMESTER_START = '2025-08-04';
+const SEMESTER_END = '2025-11-28';
+const SEMESTER_RANGE_TEXT = '04/08/2025 al 28/11/2025';
 
-const buildSemesterRrule = (startIso, semesterEndDate) => {
-  if (!startIso || !semesterEndDate) {
+const buildWeeklyCountRrule = (startIso, weeks) => {
+  const repetitions = Number(weeks);
+  if (!startIso || !Number.isFinite(repetitions) || repetitions < 1 || !Number.isInteger(repetitions)) {
     return null;
   }
 
   const start = new Date(startIso);
-  const until = new Date(`${semesterEndDate}T23:59:59`);
-
-  if (Number.isNaN(start.getTime()) || Number.isNaN(until.getTime())) {
+  if (Number.isNaN(start.getTime())) {
     return null;
   }
 
   const weekday = WEEKDAY_CODES[start.getDay()] || 'MO';
-  const untilFormatted = formatDateForRrule(until);
-  if (!untilFormatted) {
-    return null;
-  }
-
-  return `FREQ=WEEKLY;BYDAY=${weekday};UNTIL=${untilFormatted}`;
+  return `FREQ=WEEKLY;INTERVAL=1;BYDAY=${weekday};COUNT=${repetitions}`;
 };
 
 const ReservationCreate = () => {
@@ -43,8 +33,7 @@ const ReservationCreate = () => {
     cantidad_asistentes: 1,
     requiere_llaves: false,
     recurrente: false,
-    semestre_inicio: '',
-    semestre_fin: '',
+    semanas_recurrencia: 16,
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -84,27 +73,6 @@ const ReservationCreate = () => {
     }));
   }, [searchParams]);
 
-  const { recurrente, fecha_inicio: fechaInicioSeleccionada } = formData;
-
-  useEffect(() => {
-    if (!recurrente || !fechaInicioSeleccionada) {
-      return;
-    }
-    setFormData((prev) => {
-      if (prev.semestre_inicio) {
-        return prev;
-      }
-      const fechaInicio = fechaInicioSeleccionada.split('T')[0];
-      if (!fechaInicio) {
-        return prev;
-      }
-      return {
-        ...prev,
-        semestre_inicio: fechaInicio,
-      };
-    });
-  }, [recurrente, fechaInicioSeleccionada, setFormData]);
-
   const selectedSpace = useMemo(
     () => spaces.find((space) => String(space.id) === String(formData.espacio)),
     [spaces, formData.espacio]
@@ -116,18 +84,16 @@ const ReservationCreate = () => {
         return {
           ...prev,
           recurrente: false,
-          semestre_inicio: '',
-          semestre_fin: '',
         };
       }
 
-      const defaultSemesterStart = prev.semestre_inicio || (prev.fecha_inicio ? prev.fecha_inicio.split('T')[0] : '');
+      const defaultWeeks =
+        prev.semanas_recurrencia && Number(prev.semanas_recurrencia) > 0 ? prev.semanas_recurrencia : 16;
 
       return {
         ...prev,
         recurrente: true,
-        semestre_inicio: defaultSemesterStart,
-        semestre_fin: prev.semestre_fin,
+        semanas_recurrencia: defaultWeeks,
       };
     });
   };
@@ -161,36 +127,16 @@ const ReservationCreate = () => {
     let rrule = null;
 
     if (formData.recurrente) {
-      if (!formData.semestre_inicio || !formData.semestre_fin) {
-        setError('Indica las fechas de inicio y fin del semestre para esta reserva recurrente.');
+      const semanas = Number(formData.semanas_recurrencia);
+      if (!Number.isFinite(semanas) || semanas < 1 || !Number.isInteger(semanas)) {
+        setError('Indica un numero valido de semanas para la reserva recurrente.');
         setLoading(false);
         return;
       }
 
-      if (formData.semestre_inicio > formData.semestre_fin) {
-        setError('La fecha de inicio del semestre no puede ser posterior al fin del semestre.');
-        setLoading(false);
-        return;
-      }
-
-      const startDateOnly = formData.fecha_inicio.split('T')[0];
-      const endDateOnly = formData.fecha_fin.split('T')[0];
-
-      if (formData.semestre_inicio > startDateOnly) {
-        setError('La fecha de inicio del semestre debe ser igual o anterior al inicio de la primera reserva.');
-        setLoading(false);
-        return;
-      }
-
-      if (formData.semestre_fin < endDateOnly) {
-        setError('La fecha de fin del semestre debe ser igual o posterior al fin de la primera reserva.');
-        setLoading(false);
-        return;
-      }
-
-      rrule = buildSemesterRrule(formData.fecha_inicio, formData.semestre_fin);
+      rrule = buildWeeklyCountRrule(formData.fecha_inicio, semanas);
       if (!rrule) {
-        setError('No se pudo generar la regla de recurrencia para el semestre. Verifica las fechas proporcionadas.');
+        setError('No se pudo generar la regla de recurrencia. Verifica la fecha inicial y el numero de semanas.');
         setLoading(false);
         return;
       }
@@ -206,8 +152,11 @@ const ReservationCreate = () => {
       metadata = {
         recurrencia: {
           tipo: 'semestre',
-          inicio: formData.semestre_inicio,
-          fin: formData.semestre_fin,
+          semanas,
+          inicio: SEMESTER_START,
+          fin: SEMESTER_END,
+          semestre_inicio: SEMESTER_START,
+          semestre_fin: SEMESTER_END,
           ...(weekdayCode ? { dia_semana: weekdayCode } : {}),
           horario_inicio: formData.fecha_inicio,
           horario_fin: formData.fecha_fin,
@@ -225,8 +174,8 @@ const ReservationCreate = () => {
         formData.cantidad_asistentes === '' ? null : Number(formData.cantidad_asistentes),
       requiere_llaves: formData.requiere_llaves,
       recurrente: formData.recurrente,
-      semestre_inicio: formData.recurrente ? formData.semestre_inicio : null,
-      semestre_fin: formData.recurrente ? formData.semestre_fin : null,
+      semestre_inicio: formData.recurrente ? SEMESTER_START : null,
+      semestre_fin: formData.recurrente ? SEMESTER_END : null,
       rrule,
       metadata,
     };
@@ -371,33 +320,22 @@ const ReservationCreate = () => {
                     </div>
                   </div>
                   {formData.recurrente && (
-                    <>
-                      <div className="col-md-6">
-                        <label className="form-label" htmlFor="semestre_inicio">Inicio del semestre</label>
-                        <input
-                          type="date"
-                          id="semestre_inicio"
-                          name="semestre_inicio"
-                          className="form-control"
-                          value={formData.semestre_inicio}
-                          onChange={handleChange}
-                          required
-                        />
+                    <div className="col-md-6">
+                      <label className="form-label" htmlFor="semanas_recurrencia">Numero de semanas</label>
+                      <input
+                        type="number"
+                        id="semanas_recurrencia"
+                        name="semanas_recurrencia"
+                        className="form-control"
+                        min="1"
+                        value={formData.semanas_recurrencia}
+                        onChange={handleChange}
+                        required
+                      />
+                      <div className="form-text">
+                        La reserva se repetira semanalmente entre el {SEMESTER_RANGE_TEXT}.
                       </div>
-                      <div className="col-md-6">
-                        <label className="form-label" htmlFor="semestre_fin">Fin del semestre</label>
-                        <input
-                          type="date"
-                          id="semestre_fin"
-                          name="semestre_fin"
-                          className="form-control"
-                          value={formData.semestre_fin}
-                          min={formData.semestre_inicio || undefined}
-                          onChange={handleChange}
-                          required
-                        />
-                      </div>
-                    </>
+                    </div>
                   )}
                 </div>
               </div>
@@ -461,9 +399,12 @@ const ReservationCreate = () => {
                   <li><strong>Fin:</strong> {formData.fecha_fin ? new Date(formData.fecha_fin).toLocaleString() : '--'}</li>
                   <li><strong>Asistentes:</strong> {formData.cantidad_asistentes || 0}</li>
                   <li><strong>Llaves:</strong> {formData.requiere_llaves ? 'Si' : 'No'}</li>
-                  <li><strong>Recurrente:</strong> {formData.recurrente ? 'Si (semestral)' : 'No'}</li>
+                  <li><strong>Recurrente:</strong> {formData.recurrente ? 'Si (recurrente)' : 'No'}</li>
                   {formData.recurrente && (
-                    <li><strong>Semestre:</strong> {(formData.semestre_inicio || '--')} al {(formData.semestre_fin || '--')}</li>
+                    <>
+                      <li><strong>Semanas:</strong> {formData.semanas_recurrencia || '--'}</li>
+                      <li><strong>Rango semestre:</strong> {SEMESTER_RANGE_TEXT}</li>
+                    </>
                   )}
                 </ul>
                 <div className="alert alert-light border small mb-0">
