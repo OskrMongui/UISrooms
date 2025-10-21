@@ -93,103 +93,102 @@ const SpacesList = () => {
   }
 
   return (
-    <div className="spaces-home">
-      <div className="hero-card mb-4">
-        <h1 className="mb-2">Explora y reserva espacios UIS</h1>
-        <p className="text-muted mb-3">
-          Encuentra aulas, salas y laboratorios libres. Consulta su disponibilidad en tiempo real y reserva con dos clics.
-        </p>
-        <Link to="/reservations/create" className="btn btn-light text-success fw-semibold">
-          Crear reserva manual
-        </Link>
+    <div className="spaces-home container-xxl py-4">
+      <div className="reservations-hero mb-4">
+        <div className="d-flex flex-wrap justify-content-between align-items-start gap-3">
+          <div>
+            <p className="text-uppercase small mb-2">Directorio de espacios</p>
+            <h1 className="mb-2">Explora aulas, salas y laboratorios UIS</h1>
+            <p className="mb-0">
+              Consulta capacidades, recursos disponibles y accede a la disponibilidad en tiempo real antes de realizar tu solicitud.
+            </p>
+          </div>
+          <div className="d-flex flex-wrap gap-2">
+            <Link to="/reservations" className="btn btn-outline-success">
+              Ver mis reservas
+            </Link>
+          </div>
+        </div>
       </div>
 
       <div className="row g-3 mb-4">
         <div className="col-md-4">
-          <div className="card stats-card border-0 shadow-sm h-100">
-            <div className="card-body">
-              <p className="text-muted text-uppercase small mb-1">Espacios</p>
-              <div className="display-number">{stats.total}</div>
-              <span className="text-muted small">Disponibles para reservar</span>
-            </div>
+          <div className="card-elevated h-100 p-4 bg-white">
+            <p className="text-muted text-uppercase small mb-1">Espacios</p>
+            <div className="display-6 fw-semibold text-success mb-1">{stats.total}</div>
+            <span className="text-muted small">Registrados en la plataforma</span>
           </div>
         </div>
         <div className="col-md-4">
-          <div className="card stats-card border-0 shadow-sm h-100">
-            <div className="card-body">
-              <p className="text-muted text-uppercase small mb-1">Capacidad total</p>
-              <div className="display-number text-primary">{stats.capacity}</div>
-              <span className="text-muted small">Suma de aforos registrados</span>
-            </div>
+          <div className="card-elevated h-100 p-4 bg-white">
+            <p className="text-muted text-uppercase small mb-1">Capacidad total</p>
+            <div className="display-6 fw-semibold text-success mb-1">{stats.capacity}</div>
+            <span className="text-muted small">Suma de aforos registrados</span>
           </div>
         </div>
         <div className="col-md-4">
-          <div className="card stats-card border-0 shadow-sm h-100">
-            <div className="card-body">
-              <p className="text-muted text-uppercase small mb-1">Con recursos</p>
-              <div className="display-number text-success">{stats.hasResources}</div>
-              <span className="text-muted small">Espacios con equipamiento disponible</span>
-            </div>
+          <div className="card-elevated h-100 p-4 bg-white">
+            <p className="text-muted text-uppercase small mb-1">Con recursos</p>
+            <div className="display-6 fw-semibold text-success mb-1">{stats.hasResources}</div>
+            <span className="text-muted small">Equipados para actividades especializadas</span>
           </div>
         </div>
       </div>
 
-      <div className="card admin-spaces-toolbar border-0 shadow-sm mb-4">
-        <div className="card-body">
-          <div className="row g-3 align-items-end">
-            <div className="col-lg-5">
-              <label className="form-label text-muted small" htmlFor="spacesSearch">Buscar espacio</label>
-              <input
-                id="spacesSearch"
-                type="search"
-                className="form-control"
-                placeholder="Nombre, codigo o palabra clave"
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-              />
-            </div>
-            <div className="col-lg-3 col-md-6">
-              <label className="form-label text-muted small" htmlFor="spacesType">Tipo</label>
-              <select
-                id="spacesType"
-                className="form-select"
-                value={typeFilter}
-                onChange={(event) => setTypeFilter(event.target.value)}
-              >
-                <option value="todos">Todos los tipos</option>
-                {typeOptions.map((option) => (
-                  <option key={option} value={option}>{TYPE_LABELS[option] || option}</option>
-                ))}
-              </select>
-            </div>
-            <div className="col-lg-3 col-md-6">
-              <label className="form-label text-muted small" htmlFor="spacesFloor">Ubicacion</label>
-              <select
-                id="spacesFloor"
-                className="form-select"
-                value={floorFilter}
-                onChange={(event) => setFloorFilter(event.target.value)}
-              >
-                <option value="todos">Todas</option>
-                {floorOptions.map((option) => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="col-lg-1 col-md-6 d-grid">
-              <button
-                type="button"
-                className="btn btn-outline-secondary"
-                onClick={() => {
-                  setSearchTerm('');
-                  setTypeFilter('todos');
-                  setFloorFilter('todos');
-                }}
-                disabled={!searchTerm && typeFilter === 'todos' && floorFilter === 'todos'}
-              >
-                Limpiar
-              </button>
-            </div>
+      <div className="card-elevated mb-4 p-4 bg-white">
+        <div className="row g-3 align-items-end">
+          <div className="col-lg-5">
+            <label className="form-label text-muted small" htmlFor="spacesSearch">Buscar espacio</label>
+            <input
+              id="spacesSearch"
+              type="search"
+              className="form-control"
+              placeholder="Nombre, codigo o palabra clave"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+            />
+          </div>
+          <div className="col-lg-3 col-md-6">
+            <label className="form-label text-muted small" htmlFor="spacesType">Tipo</label>
+            <select
+              id="spacesType"
+              className="form-select"
+              value={typeFilter}
+              onChange={(event) => setTypeFilter(event.target.value)}
+            >
+              <option value="todos">Todos los tipos</option>
+              {typeOptions.map((option) => (
+                <option key={option} value={option}>{TYPE_LABELS[option] || option}</option>
+              ))}
+            </select>
+          </div>
+          <div className="col-lg-3 col-md-6">
+            <label className="form-label text-muted small" htmlFor="spacesFloor">Ubicacion</label>
+            <select
+              id="spacesFloor"
+              className="form-select"
+              value={floorFilter}
+              onChange={(event) => setFloorFilter(event.target.value)}
+            >
+              <option value="todos">Todas</option>
+              {floorOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="col-lg-1 col-md-6 d-grid">
+            <button
+              type="button"
+              className="btn btn-outline-secondary"
+              onClick={() => {
+                setSearchTerm('');
+                setTypeFilter('todos');
+                setFloorFilter('todos');
+              }}
+              disabled={!searchTerm && typeFilter === 'todos' && floorFilter === 'todos'}
+            >
+              Limpiar
+            </button>
           </div>
         </div>
       </div>

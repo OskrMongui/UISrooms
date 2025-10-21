@@ -73,7 +73,7 @@ const Navbar = () => {
           {
             to: '/reservations',
             label: 'Mis reservas',
-            description: 'Consulta tus próximas reservas y su estado.',
+            description: 'Consulta tus proximas reservas y su estado.',
             requiresAuth: true,
             activeMatch: '/reservations',
           },          
@@ -110,7 +110,7 @@ const Navbar = () => {
       {
         id: 'apoyo',
         label: 'Apoyo',
-        description: 'Mantén la comunicación y reporta novedades.',
+        description: 'Manten la comunicacion y reporta novedades.',
         items: [
           {
             to: '/notificaciones',
@@ -122,7 +122,7 @@ const Navbar = () => {
           {
             to: '/incidencias',
             label: 'Incidencias',
-            description: 'Reporta problemas y haz seguimiento en línea.',
+            description: 'Reporta problemas y haz seguimiento en linea.',
             requiresAuth: true,
             activeMatch: '/incidencias',
           },
@@ -153,15 +153,6 @@ const Navbar = () => {
       });
     }
 
-    if (token && isAdmin()) {
-      recursosSection?.items.push({
-        to: '/admin/spaces',
-        label: 'Panel de administración',
-        description: 'Configura espacios, horarios y recursos.',
-        requiresAuth: true,
-        activeMatch: '/admin/spaces',
-      });
-    }
 
     return sections;
   }, [token]);
@@ -199,10 +190,11 @@ const Navbar = () => {
     </li>
   );
 
+
   const renderSectionItem = (item) => {
     const accessible = !item.requiresAuth || token;
     const baseClasses =
-      'dropdown-item rounded-3 py-3 px-3 transition-all d-flex flex-column gap-1';
+      'dropdown-item mega-menu-item py-3 px-3 d-flex flex-column gap-1';
 
     if (!accessible) {
       return (
@@ -210,12 +202,12 @@ const Navbar = () => {
           key={item.to}
           className={`${baseClasses} disabled text-muted pe-none`}
         >
-          <span className="fw-semibold">{item.label}</span>
+          <span className="fw-semibold text-secondary">{item.label}</span>
           <span className="small">
-            {item.description || 'Requiere iniciar sesión'}
+            {item.description || 'Requiere iniciar sesion'}
           </span>
-          <span className="badge bg-light text-muted mt-1 align-self-start">
-            Requiere iniciar sesión
+          <span className="tag is-warning mt-1 align-self-start">
+            Inicia sesion
           </span>
         </span>
       );
@@ -225,30 +217,30 @@ const Navbar = () => {
       <NavLink
         key={item.to}
         to={item.to}
-        className={({ isActive }) =>
-          `${baseClasses}${
-            isActive ? ' active-item border border-success-subtle' : ''
-          }`
-        }
+        className={({ isActive }) => {
+          const isActiveMatch =
+            isActive ||
+            (item.activeMatch && location.pathname.includes(item.activeMatch));
+          return `${baseClasses}${isActiveMatch ? ' active-item' : ''}`;
+        }}
         onClick={() => {
           closeAllMenus();
           setIsNavCollapsed(true);
         }}
       >
-        <span className="d-flex align-items-center gap-2">
-          <span className="fw-semibold text-dark">{item.label}</span>
-          {item.highlight && (
-            <span className="badge rounded-pill bg-success-subtle text-success fw-semibold">
-              {item.highlight}
-            </span>
-          )}
+        <span className="d-flex align-items-center gap-2 text-success fw-semibold">
+          <span>{item.label}</span>
+          {item.highlight && <span className="tag">{item.highlight}</span>}
+          {item.requiresAdmin && <span className="tag">Admin</span>}
+          {item.requiresApprover && <span className="tag">Aprobador</span>}
         </span>
-        {item.description && (
-          <span className="small text-muted">{item.description}</span>
-        )}
+        <span className="small text-muted">
+          {item.description || 'Ver detalle'}
+        </span>
       </NavLink>
     );
   };
+
 
   const renderSection = (section) => {
     const visibleItems = section.items.filter((item) => {
@@ -293,16 +285,16 @@ const Navbar = () => {
           {section.label}
         </button>
         <div
-          className={`dropdown-menu dropdown-menu-xl shadow border-0 rounded-4 p-0 mt-3${
+          className={`dropdown-menu dropdown-menu-xl mega-menu p-0 mt-3${
             isOpen ? ' show' : ''
           }`}
           aria-labelledby={`navbar-${section.id}`}
         >
-          <div className="px-4 py-4 border-bottom">
-            <h6 className="text-uppercase text-success fw-semibold mb-1 small">
+          <div className="mega-menu__header">
+            <h6 className="mega-menu__title">
               {section.label}
             </h6>
-            <p className="mb-0 text-muted small">{section.description}</p>
+            <p className="mega-menu__description">{section.description}</p>
           </div>
           <div className="d-flex flex-column p-3 gap-2">
             {visibleItems.map((item) => renderSectionItem(item))}
@@ -314,12 +306,12 @@ const Navbar = () => {
 
   return (
     <nav
-      className="navbar navbar-expand-lg navbar-light bg-white border-bottom shadow-sm"
+      className="navbar navbar-expand-lg navbar-light navbar-uis shadow-sm"
       ref={navRef}
     >
       <div className="container">
-        <Link className="navbar-brand fw-bold text-success" to="/">
-          UISrooms
+        <Link className="navbar-brand d-flex align-items-center gap-2" to="/">
+          <span className="fw-bold">UISrooms</span>
         </Link>
         <button
           className="navbar-toggler"
@@ -345,6 +337,22 @@ const Navbar = () => {
               .filter((link) => !link.requiresAuth || token)
               .map((link) => renderPrimaryLink(link))}
             {navSections.map((section) => renderSection(section))}
+            {token && isAdmin() && (
+              <li className="nav-item">
+                <NavLink
+                  to="/admin/spaces"
+                  className={({ isActive }) =>
+                    `nav-link px-lg-3${isActive ? ' active fw-semibold' : ''}`
+                  }
+                  onClick={() => {
+                    closeAllMenus();
+                    setIsNavCollapsed(true);
+                  }}
+                >
+                  Panel de administracion
+                </NavLink>
+              </li>
+            )}
           </ul>
           <ul className="navbar-nav align-items-lg-center gap-2 gap-lg-3 ms-lg-4">
             {token ? (
@@ -352,23 +360,19 @@ const Navbar = () => {
                 <li className="nav-item">
                   <NavLink
                     to="/spaces"
-                    className="btn btn-success btn-sm px-3 fw-semibold shadow-sm"
+                    className="btn btn-cta btn-sm px-3 fw-semibold shadow-sm"
                     onClick={() => {
                       closeAllMenus();
                       setIsNavCollapsed(true);
                     }}
                   >
-                    Reservar espacio
+                    Nueva reserva
                   </NavLink>
                 </li>
-                <li
-                  className={`nav-item dropdown${
-                    isUserMenuOpen ? ' show' : ''
-                  }`}
-                >
+                <li className={`nav-item dropdown${isUserMenuOpen ? ' show' : ''}`}>
                   <button
                     type="button"
-                    className="btn btn-outline-success dropdown-toggle d-flex align-items-center gap-2 px-3 py-2"
+                    className="navbar-user-toggle d-flex align-items-center gap-2 px-3 py-2 dropdown-toggle"
                     id="navbarUserMenu"
                     aria-expanded={isUserMenuOpen}
                     onClick={() => {
@@ -377,24 +381,23 @@ const Navbar = () => {
                     }}
                   >
                     <span
-                      className="rounded-circle bg-success text-white fw-semibold text-uppercase d-inline-flex align-items-center justify-content-center"
-                      style={{ width: '32px', height: '32px' }}
+                      className="avatar-initial"
                     >
                       {user?.first_name?.charAt(0) ||
                         user?.username?.charAt(0) ||
                         '?'}
                     </span>
-                    <span className="d-none d-lg-flex flex-column text-start lh-sm">
-                      <span className="fw-semibold text-success-emphasis">
+                    <span className="user-meta">
+                      <span className="user-name">
                         {userDisplayName || 'Usuario'}
                       </span>
-                      <span className="small text-muted">
+                      <span className="user-role">
                         {userRoleName || 'Cuenta institucional'}
                       </span>
                     </span>
                   </button>
                   <ul
-                    className={`dropdown-menu dropdown-menu-end shadow border-0 rounded-4 p-2${
+                    className={`dropdown-menu dropdown-menu-end navbar-user-menu p-2${
                       isUserMenuOpen ? ' show' : ''
                     }`}
                     aria-labelledby="navbarUserMenu"
@@ -429,7 +432,7 @@ const Navbar = () => {
                         className="dropdown-item rounded-3 text-danger fw-semibold"
                         onClick={handleLogout}
                       >
-                        Cerrar sesión
+                        Cerrar sesion
                       </button>
                     </li>
                   </ul>
@@ -445,7 +448,7 @@ const Navbar = () => {
                     setIsNavCollapsed(true);
                   }}
                 >
-                  Iniciar sesión
+                  Iniciar sesion
                 </Link>
               </li>
             )}

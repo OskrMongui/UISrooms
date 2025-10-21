@@ -148,111 +148,115 @@ const AdminSpacesList = () => {
   const isEmpty = filteredSpaces.length === 0;
 
   return (
-    <div className="admin-spaces">
-      <div className="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
-        <div>
-          <h1 className="mb-1">Administrar espacios</h1>
-          <p className="text-muted mb-0">Gestiona aulas, laboratorios y salas desde un solo lugar.</p>
-        </div>
-        <div className="d-flex flex-wrap gap-2">
-          <button
-            type="button"
-            className="btn btn-outline-success"
-            onClick={() => fetchSpaces(false)}
-            disabled={refreshing}
-          >
-            {refreshing ? 'Actualizando...' : 'Actualizar'}
-          </button>
-          <Link to="/admin/spaces/create" className="btn btn-success">
-            Crear nuevo espacio
-          </Link>
+    <div className="admin-spaces container-xxl py-4">
+      <div className="reservations-hero mb-4">
+        <div className="d-flex flex-wrap justify-content-between align-items-start gap-3">
+          <div>
+            <p className="text-uppercase small mb-2">Panel de administracion</p>
+            <h1 className="mb-2">Espacios institucionales</h1>
+            <p className="mb-0">
+              Gestiona aulas, laboratorios y recursos. Crea nuevos espacios o actualiza sus caracteristicas para la comunidad UIS.
+            </p>
+          </div>
+          <div className="d-flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="btn btn-outline-light"
+              onClick={() => fetchSpaces(false)}
+              disabled={refreshing}
+            >
+              {refreshing ? 'Actualizando...' : 'Refrescar lista'}
+            </button>
+            <Link to="/admin/spaces/create" className="btn btn-light text-success fw-semibold">
+              Crear espacio
+            </Link>
+          </div>
         </div>
       </div>
 
       {error && <div className="alert alert-danger mb-4">{error}</div>}
 
       <div className="row g-3 mb-4">
-        <div className="col-md-4">
-          <div className="card stats-card border-0 shadow-sm h-100">
-            <div className="card-body">
-              <p className="text-muted text-uppercase small mb-1">Espacios totales</p>
-              <div className="display-number">{stats.total}</div>
-              <span className="text-muted small">Incluye todos los tipos registrados</span>
-            </div>
+        <div className="col-md-3">
+          <div className="card-elevated h-100 p-4 bg-white">
+            <p className="text-muted text-uppercase small mb-1">Total espacios</p>
+            <div className="display-6 fw-semibold text-success mb-1">{stats.total}</div>
+            <span className="text-muted small">Registrados en la plataforma</span>
           </div>
         </div>
-        <div className="col-md-4">
-          <div className="card stats-card border-0 shadow-sm h-100">
-            <div className="card-body">
-              <p className="text-muted text-uppercase small mb-1">Activos</p>
-              <div className="display-number text-success">{stats.active}</div>
-              <span className="text-muted small">{stats.inactive} inactivos actualmente</span>
-            </div>
+        <div className="col-md-3">
+          <div className="card-elevated h-100 p-4 bg-white">
+            <p className="text-muted text-uppercase small mb-1">Activos</p>
+            <div className="display-6 fw-semibold text-success mb-1">{stats.active}</div>
+            <span className="text-muted small">{stats.inactive} inactivos actualmente</span>
           </div>
         </div>
-        <div className="col-md-4">
-          <div className="card stats-card border-0 shadow-sm h-100">
-            <div className="card-body">
-              <p className="text-muted text-uppercase small mb-1">Con recursos</p>
-              <div className="display-number text-primary">{stats.withResources}</div>
-              <span className="text-muted small">Espacios con equipamiento registrado</span>
-            </div>
+        <div className="col-md-3">
+          <div className="card-elevated h-100 p-4 bg-white">
+            <p className="text-muted text-uppercase small mb-1">Inactivos</p>
+            <div className="display-6 fw-semibold text-warning mb-1">{stats.inactive}</div>
+            <span className="text-muted small">Requieren seguimiento</span>
+          </div>
+        </div>
+        <div className="col-md-3">
+          <div className="card-elevated h-100 p-4 bg-white">
+            <p className="text-muted text-uppercase small mb-1">Con recursos</p>
+            <div className="display-6 fw-semibold text-success mb-1">{stats.withResources}</div>
+            <span className="text-muted small">Espacios equipados</span>
           </div>
         </div>
       </div>
 
-      <div className="card admin-spaces-toolbar border-0 shadow-sm mb-4">
-        <div className="card-body">
-          <div className="row g-3 align-items-end">
-            <div className="col-lg-4">
-              <label className="form-label text-muted small" htmlFor="searchSpaces">Buscar</label>
-              <input
-                id="searchSpaces"
-                type="search"
-                className="form-control"
-                placeholder="Nombre, codigo o descripcion"
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-              />
-            </div>
-            <div className="col-lg-3 col-md-6">
-              <label className="form-label text-muted small" htmlFor="filterType">Tipo</label>
-              <select
-                id="filterType"
-                className="form-select"
-                value={typeFilter}
-                onChange={(event) => setTypeFilter(event.target.value)}
-              >
-                <option value="todos">Todos los tipos</option>
-                {typeOptions.map((option) => (
-                  <option key={option} value={option}>{getTypeLabel(option)}</option>
-                ))}
-              </select>
-            </div>
-            <div className="col-lg-3 col-md-6">
-              <label className="form-label text-muted small" htmlFor="filterFloor">Ubicacion</label>
-              <select
-                id="filterFloor"
-                className="form-select"
-                value={floorFilter}
-                onChange={(event) => setFloorFilter(event.target.value)}
-              >
-                <option value="todos">Todas las ubicaciones</option>
-                {floorOptions.map((option) => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
-            </div>
-            <div className="col-lg-2 col-md-6 d-grid">
-              <button
-                type="button"
-                className="btn btn-outline-secondary"
-                onClick={handleResetFilters}
-                disabled={!hasActiveFilters}
-              >
-                Limpiar filtros
-              </button>
-            </div>
+      <div className="card-elevated mb-4 p-4 bg-white">
+        <div className="row g-3 align-items-end">
+          <div className="col-lg-4">
+            <label className="form-label text-muted small" htmlFor="searchSpaces">Buscar</label>
+            <input
+              id="searchSpaces"
+              type="search"
+              className="form-control"
+              placeholder="Nombre, codigo o descripcion"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+            />
+          </div>
+          <div className="col-lg-3 col-md-6">
+            <label className="form-label text-muted small" htmlFor="filterType">Tipo</label>
+            <select
+              id="filterType"
+              className="form-select"
+              value={typeFilter}
+              onChange={(event) => setTypeFilter(event.target.value)}
+            >
+              <option value="todos">Todos los tipos</option>
+              {typeOptions.map((option) => (
+                <option key={option} value={option}>{getTypeLabel(option)}</option>
+              ))}
+            </select>
+          </div>
+          <div className="col-lg-3 col-md-6">
+            <label className="form-label text-muted small" htmlFor="filterFloor">Ubicacion</label>
+            <select
+              id="filterFloor"
+              className="form-select"
+              value={floorFilter}
+              onChange={(event) => setFloorFilter(event.target.value)}
+            >
+              <option value="todos">Todas las ubicaciones</option>
+              {floorOptions.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="col-lg-2 col-md-6 d-grid">
+            <button
+              type="button"
+              className="btn btn-outline-secondary"
+              onClick={handleResetFilters}
+              disabled={!hasActiveFilters}
+            >
+              Limpiar filtros
+            </button>
           </div>
         </div>
       </div>
@@ -312,6 +316,9 @@ const AdminSpacesList = () => {
                     <Link to={`/admin/spaces/${space.id}/schedule`} className="btn btn-outline-primary">
                       Bloqueos
                     </Link>
+                    <Link to={`/admin/spaces/${space.id}/class-schedule`} className="btn btn-outline-info">
+                      Agregar horario
+                    </Link>
                     <button
                       type="button"
                       className="btn btn-outline-danger"
@@ -332,3 +339,4 @@ const AdminSpacesList = () => {
 };
 
 export default AdminSpacesList;
+

@@ -40,6 +40,20 @@ ROLE_DEFINITIONS = [
         "password": "Admin123!",
     },
     {
+        "name": "laboratorista",
+        "descripcion": "Gestiona y aprueba reservas de laboratorios.",
+        "permisos": {"reservas": "manage_labs", "espacios": "view"},
+        "user": {
+            "username": "laboratorista_demo",
+            "email": "laboratorista.demo@uisrooms.test",
+            "first_name": "Laboratorista",
+            "last_name": "Demo",
+            "is_staff": True,
+            "is_superuser": False,
+        },
+        "password": "Laboratorista123!",
+    },
+    {
         "name": "profesor",
         "descripcion": "Puede gestionar espacios y reservas propias.",
         "permisos": {"espacios": "manage", "reservas": "manage"},
@@ -54,18 +68,18 @@ ROLE_DEFINITIONS = [
         "password": "Profesor123!",
     },
     {
-        "name": "estudiante",
-        "descripcion": "Puede consultar y solicitar reservas.",
-        "permisos": {"reservas": "view"},
+        "name": "secretaria",
+        "descripcion": "Administra solicitudes y aprobaciones de aulas.",
+        "permisos": {"reservas": "manage_aulas", "espacios": "view"},
         "user": {
-            "username": "estudiante_demo",
-            "email": "estudiante.demo@uisrooms.test",
-            "first_name": "Estudiante",
+            "username": "secretaria_demo",
+            "email": "secretaria.demo@uisrooms.test",
+            "first_name": "Secretaria",
             "last_name": "Demo",
-            "is_staff": False,
+            "is_staff": True,
             "is_superuser": False,
         },
-        "password": "Estudiante123!",
+        "password": "Secretaria123!",
     },
 ]
 

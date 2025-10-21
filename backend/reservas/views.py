@@ -1,5 +1,7 @@
+from django.db.models import Q
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 
@@ -31,14 +33,32 @@ class ReservaViewSet(viewsets.ModelViewSet):
         estado = self.request.query_params.get("estado")
         if estado:
             queryset = queryset.filter(estado=estado)
-        return queryset
+
+        user = getattr(self.request, "user", None)
+        if not user or not getattr(user, "is_authenticated", False):
+            return queryset.none()
+
+        role = self._user_role(user)
+        manager_roles = {"admin", "secretaria", "laboratorista"}
+
+        if role in manager_roles:
+            if role == "admin":
+                return queryset
+
+            filters = Q(usuario=user)
+            if role == "laboratorista":
+                filters |= Q(espacio__tipo__iexact=TipoEspacio.LABORATORIO)
+            if role == "secretaria":
+                filters |= Q(espacio__tipo__iexact=TipoEspacio.AULA)
+            return queryset.filter(filters)
+
+        return queryset.filter(usuario=user)
 
     def perform_create(self, serializer):
         user = getattr(self.request, "user", None)
-        if user and user.is_authenticated:
-            serializer.save(creado_por=user)
-        else:
-            serializer.save()
+        if not user or not getattr(user, "is_authenticated", False):
+            raise PermissionDenied("Debes iniciar sesion para crear una reserva.")
+        serializer.save(creado_por=user, usuario=user)
 
     def _user_role(self, user):
         if not user or not getattr(user, "is_authenticated", False):

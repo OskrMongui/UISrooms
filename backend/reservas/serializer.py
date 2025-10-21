@@ -22,6 +22,9 @@ class ReservaSerializer(serializers.ModelSerializer):
             'cantidad_asistentes','requiere_llaves','recurrente','semestre_inicio','semestre_fin','rrule','creado_por','creado_en','actualizado_en','metadata'
         ]
         read_only_fields = ['id','creado_en','actualizado_en','usuario_detalle','espacio_detalle','estado_display']
+        extra_kwargs = {
+            'usuario': {'read_only': True},
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

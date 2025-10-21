@@ -158,3 +158,4 @@ const NotificacionCreate = () => {
 };
 
 export default NotificacionCreate;
+

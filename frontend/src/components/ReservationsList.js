@@ -1,4 +1,4 @@
- import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import api from '../api';
 import { Link } from 'react-router-dom';
 
@@ -26,7 +26,8 @@ const formatDateTime = (value) => {
 const ReservationCard = ({ reservation, onDelete, deletingId }) => {
   const status = String(reservation.estado || '').toLowerCase();
   const statusVariant = STATUS_VARIANTS[status] || 'secondary';
-  const statusLabel = reservation.estado_display || STATUS_LABELS[status] || reservation.estado || 'N/D';
+  const statusLabel =
+    reservation.estado_display || STATUS_LABELS[status] || reservation.estado || 'N/D';
   const space = reservation.espacio_detalle;
   const start = new Date(reservation.fecha_inicio);
   const end = new Date(reservation.fecha_fin);
@@ -34,70 +35,85 @@ const ReservationCard = ({ reservation, onDelete, deletingId }) => {
   const isUpcoming = start.getTime() >= Date.now();
 
   return (
-    <div className="card reservation-card h-100 border-0 shadow-sm">
-      <div className="card-body d-flex flex-column">
-        <div className="d-flex justify-content-between align-items-start mb-3">
-          <div>
-            <h5 className="card-title mb-1">{space?.nombre || `Espacio ${reservation.espacio}`}</h5>
-            <div className="text-muted small">
-              {space?.tipo || 'Tipo no disponible'} | {space?.ubicacion_display || space?.ubicacion || 'Ubicacion sin definir'}
-            </div>
+    <div className="reservation-card">
+      <div className="reservation-card__header">
+        <div>
+          <h3 className="reservation-card__heading">
+            {space?.nombre || `Espacio ${reservation.espacio}`}
+          </h3>
+          <div className="reservation-card__meta">
+            {space?.tipo || 'Tipo no disponible'} |{' '}
+            {space?.ubicacion_display || space?.ubicacion || 'Ubicacion sin definir'}
           </div>
-          <span className={`badge text-bg-${statusVariant} text-uppercase small fw-semibold`}>
-            {statusLabel}
-          </span>
         </div>
+        <span className={`status-chip status-chip--${statusVariant}`}>
+          {statusLabel}
+        </span>
+      </div>
 
-        <div className="mb-3">
-          <div className="d-flex align-items-center justify-content-between">
-            <span className="fw-semibold">Inicio</span>
+      <div className="reservation-card__body">
+        <div className="reservation-card__timeline">
+          <div className="d-flex justify-content-between">
+            <span>Inicio</span>
             <span>{formatDateTime(reservation.fecha_inicio)}</span>
           </div>
-          <div className="d-flex align-items-center justify-content-between">
-            <span className="fw-semibold">Fin</span>
+          <div className="d-flex justify-content-between">
+            <span>Fin</span>
             <span>{formatDateTime(reservation.fecha_fin)}</span>
           </div>
         </div>
 
-        <div className="mb-3">
+        {reservation.usuario_detalle ? (
+          <div>
+            <div className="fw-semibold small text-success">Solicitante</div>
+            <div className="reservation-card__meta">
+              {reservation.usuario_detalle.nombre || 'Sin nombre'}
+              {reservation.usuario_detalle.email ? ` | ${reservation.usuario_detalle.email}` : ''}
+            </div>
+          </div>
+        ) : null}
+
+        <div>
           <p className="text-muted small mb-2">
             {reservation.motivo || 'Sin motivo registrado.'}
           </p>
           <div className="d-flex flex-wrap gap-2 small">
             {reservation.cantidad_asistentes ? (
-              <span className="badge text-bg-light border">
+              <span className="badge bg-light text-success border">
                 {reservation.cantidad_asistentes} asistentes
               </span>
             ) : null}
             {reservation.requiere_llaves ? (
-              <span className="badge text-bg-light border">Requiere llaves</span>
+              <span className="badge bg-light text-success border">Requiere llaves</span>
             ) : null}
             {reservation.recurrente ? (
-              <span className="badge text-bg-light border">
+              <span className="badge bg-light text-success border">
                 Recurrente | {reservation.semestre_inicio || '--'} - {reservation.semestre_fin || '--'}
               </span>
             ) : null}
           </div>
         </div>
+      </div>
 
-        <div className="mt-auto pt-3">
-          <div className="d-flex justify-content-between align-items-center text-muted small">
-            <span>{isUpcoming ? 'Reserva proxima' : isPast ? 'Reserva pasada' : 'Reserva en curso'}</span>
-            <span>Solicitada: {formatDateTime(reservation.creado_en)}</span>
-          </div>
-          {onDelete ? (
-            <div className="d-flex justify-content-end mt-3">
-              <button
-                type="button"
-                className="btn btn-sm btn-outline-danger"
-                onClick={() => onDelete(reservation.id)}
-                disabled={deletingId === reservation.id}
-              >
-                {deletingId === reservation.id ? 'Eliminando...' : 'Eliminar'}
-              </button>
-            </div>
-          ) : null}
+      <div className="reservation-card__footer">
+        <div className="d-flex justify-content-between align-items-center">
+          <span>
+            {isUpcoming ? 'Reserva proxima' : isPast ? 'Reserva pasada' : 'Reserva en curso'}
+          </span>
+          <span>Solicitada: {formatDateTime(reservation.creado_en)}</span>
         </div>
+        {onDelete ? (
+          <div className="d-flex justify-content-end">
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-danger"
+              onClick={() => onDelete(reservation.id)}
+              disabled={deletingId === reservation.id}
+            >
+              {deletingId === reservation.id ? 'Eliminando...' : 'Eliminar'}
+            </button>
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -132,7 +148,7 @@ const ReservationsList = () => {
       return;
     }
 
-    const confirmed = window.confirm('¿Deseas eliminar esta reserva? Esta accion no se puede deshacer.');
+    const confirmed = window.confirm('Deseas eliminar esta reserva? Esta accion no se puede deshacer.');
     if (!confirmed) {
       return;
     }
@@ -215,20 +231,21 @@ const ReservationsList = () => {
   if (error) return <div className="alert alert-danger">{error}</div>;
 
   return (
-    <div className="reservations-view">
-      <div className="hero-card mb-4 p-4 border-0 rounded-3 shadow-sm bg-success-subtle">
+    <div className="reservations-view container-xxl py-4">
+      <div className="reservations-hero mb-4">
         <div className="d-flex flex-wrap justify-content-between align-items-start gap-3">
           <div>
-            <h1 className="mb-1">Mis reservas</h1>
-            <p className="text-muted mb-0">
-              Revisa el estado de tus solicitudes, identifica las proximas y encuentra rapidamente lo que necesitas.
+            <p className="text-uppercase small mb-2">Panel de reservas</p>
+            <h1 className="mb-2">Gestiona tus espacios con claridad</h1>
+            <p className="mb-0">
+              Visualiza el estado de cada solicitud, encuentra tus proximas reservas y realiza ajustes cuando lo necesites.
             </p>
           </div>
           <div className="d-flex flex-wrap gap-2">
             <Link to="/spaces" className="btn btn-outline-success">
               Explorar espacios
             </Link>
-            <Link to="/reservations/create" className="btn btn-success">
+            <Link to="/reservations/create" className="btn btn-success fw-semibold">
               Nueva reserva
             </Link>
           </div>
@@ -237,45 +254,41 @@ const ReservationsList = () => {
 
       <div className="row g-3 mb-4">
         <div className="col-md-4">
-          <div className="card border-0 shadow-sm h-100">
-            <div className="card-body">
-              <p className="text-muted text-uppercase small mb-1">Total de solicitudes</p>
-              <div className="display-6">{stats.total}</div>
-              <p className="small text-muted mb-0">
-                {stats.pending} pendientes | {stats.approved} aprobadas
-              </p>
-            </div>
+          <div className="card-elevated h-100 p-4 bg-white">
+            <p className="text-muted text-uppercase small mb-1">Total de solicitudes</p>
+            <div className="display-6 fw-semibold text-success mb-1">{stats.total}</div>
+            <p className="small text-muted mb-0">
+              {stats.pending} pendientes | {stats.approved} aprobadas
+            </p>
           </div>
         </div>
         <div className="col-md-4">
-          <div className="card border-0 shadow-sm h-100">
-            <div className="card-body">
-              <p className="text-muted text-uppercase small mb-1">Proxima reserva</p>
-              {stats.next ? (
-                <>
-                  <div className="fw-semibold">{stats.next.espacio_detalle?.nombre || 'Espacio sin nombre'}</div>
-                  <p className="small text-muted mb-0">
-                    {formatDateTime(stats.next.fecha_inicio)}
-                  </p>
-                </>
-              ) : (
-                <p className="text-muted small mb-0">No tienes reservas proximas.</p>
-              )}
-            </div>
+          <div className="card-elevated h-100 p-4 bg-white">
+            <p className="text-muted text-uppercase small mb-1">Proxima reserva</p>
+            {stats.next ? (
+              <>
+                <div className="fw-semibold text-success mb-1">
+                  {stats.next.espacio_detalle?.nombre || 'Espacio sin nombre'}
+                </div>
+                <p className="small text-muted mb-0">
+                  {formatDateTime(stats.next.fecha_inicio)}
+                </p>
+              </>
+            ) : (
+              <p className="text-muted small mb-0">No tienes reservas proximas.</p>
+            )}
           </div>
         </div>
         <div className="col-md-4">
-          <div className="card border-0 shadow-sm h-100">
-            <div className="card-body">
-              <p className="text-muted text-uppercase small mb-1">Buscar</p>
-              <input
-                type="search"
-                className="form-control"
-                placeholder="Espacio, estado o motivo"
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-              />
-            </div>
+          <div className="card-elevated h-100 p-4 bg-white">
+            <p className="text-muted text-uppercase small mb-1">Buscar</p>
+            <input
+              type="search"
+              className="form-control"
+              placeholder="Espacio, estado o motivo"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+            />
           </div>
         </div>
       </div>
@@ -283,39 +296,37 @@ const ReservationsList = () => {
       {actionMessage ? <div className="alert alert-success">{actionMessage}</div> : null}
       {actionError ? <div className="alert alert-danger">{actionError}</div> : null}
 
-      <div className="card border-0 shadow-sm mb-4">
-        <div className="card-body">
-          <div className="d-flex flex-wrap gap-2 align-items-center">
-            <span className="text-muted small fw-semibold text-uppercase">Filtrar por estado:</span>
-            <div className="btn-group">
+      <div className="card-elevated mb-4 p-4 bg-white">
+        <div className="d-flex flex-wrap gap-2 align-items-center">
+          <span className="text-muted small fw-semibold text-uppercase">Filtrar por estado:</span>
+          <div className="btn-group">
+            <button
+              type="button"
+              className={`btn btn-sm btn-outline-success ${statusFilter === 'todos' ? 'active' : ''}`}
+              onClick={() => setStatusFilter('todos')}
+            >
+              Todos
+            </button>
+            {Object.entries(STATUS_LABELS).map(([value, label]) => (
               <button
+                key={value}
                 type="button"
-                className={`btn btn-sm btn-outline-success ${statusFilter === 'todos' ? 'active' : ''}`}
-                onClick={() => setStatusFilter('todos')}
+                className={`btn btn-sm btn-outline-success ${statusFilter === value ? 'active' : ''}`}
+                onClick={() => setStatusFilter(value)}
               >
-                Todos
+                {label}
               </button>
-              {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  className={`btn btn-sm btn-outline-success ${statusFilter === value ? 'active' : ''}`}
-                  onClick={() => setStatusFilter(value)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            {searchTerm && (
-              <button
-                type="button"
-                className="btn btn-sm btn-outline-secondary ms-auto"
-                onClick={() => setSearchTerm('')}
-              >
-                Limpiar busqueda
-              </button>
-            )}
+            ))}
           </div>
+          {searchTerm && (
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-secondary ms-auto"
+              onClick={() => setSearchTerm('')}
+            >
+              Limpiar busqueda
+            </button>
+          )}
         </div>
       </div>
 

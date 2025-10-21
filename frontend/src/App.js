@@ -26,6 +26,7 @@ import SpaceCreate from './components/SpaceCreate';
 import SpaceEdit from './components/SpaceEdit';
 import SpaceScheduleCreate from './components/SpaceScheduleCreate';
 import SpaceScheduleEdit from './components/SpaceScheduleEdit';
+import SpaceClassSchedule from './components/SpaceClassSchedule';
 import ReservationApprovals from './components/ReservationApprovals';
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -63,6 +64,7 @@ function App() {
             <Route path="/admin/spaces/:id/edit" element={<ProtectedRoute admin><SpaceEdit /></ProtectedRoute>} />
             <Route path="/admin/spaces/:id/schedule" element={<ProtectedRoute admin><SpaceScheduleCreate /></ProtectedRoute>} />
             <Route path="/admin/spaces/:id/schedule/edit" element={<ProtectedRoute admin><SpaceScheduleEdit /></ProtectedRoute>} />
+            <Route path="/admin/spaces/:id/class-schedule" element={<ProtectedRoute admin><SpaceClassSchedule /></ProtectedRoute>} />
           </Routes>
         </div>
       </div>

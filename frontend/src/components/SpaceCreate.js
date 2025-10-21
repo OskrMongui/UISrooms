@@ -79,8 +79,8 @@ const SpaceCreate = () => {
       <form onSubmit={handleSubmit} className="space-form-body">
         <div className="row g-4">
           <div className="col-lg-8">
-            <div className="card border-0 shadow-sm mb-4">
-              <div className="card-header bg-white fw-semibold">Datos generales</div>
+            <div className="card border-0 shadow-sm form-panel mb-4">
+              <div className="card-header">Datos generales</div>
               <div className="card-body">
                 <div className="row g-3">
                   <div className="col-md-6">
@@ -125,8 +125,8 @@ const SpaceCreate = () => {
               </div>
             </div>
 
-            <div className="card border-0 shadow-sm mb-4">
-              <div className="card-header bg-white fw-semibold">Caracteristicas</div>
+            <div className="card border-0 shadow-sm form-panel mb-4">
+              <div className="card-header">Caracteristicas</div>
               <div className="card-body">
                 <div className="row g-3">
                   <div className="col-md-6">
@@ -210,7 +210,7 @@ const SpaceCreate = () => {
           </div>
 
           <div className="col-lg-4">
-            <div className="card border-0 shadow-sm">
+            <div className="card border-0 shadow-sm form-panel">
               <div className="card-body">
                 <h5 className="card-title">Resumen</h5>
                 <p className="text-muted small mb-3">Revisa los datos antes de guardar.</p>
@@ -240,3 +240,4 @@ const SpaceCreate = () => {
 };
 
 export default SpaceCreate;
+

@@ -32,7 +32,7 @@ const CALENDAR_MESSAGES = {
   noEventsInRange: 'No hay eventos en el rango seleccionado',
 };
 
-const withSeconds = (value) => {
+const withSeconds = (value) => {  
   if (!value) return value;
   return value.length === 5 ? `${value}:00` : value;
 };
@@ -69,6 +69,17 @@ const isoWeekDayIndex = (momentDate) => {
 
 const formatDisplayDateTime = (date) => moment(date).format('DD/MM/YYYY HH:mm');
 const formatInputDateTime = (date) => moment(date).format('YYYY-MM-DDTHH:mm');
+
+const CLASS_EVENT_PREFIX = '[CLASE]';
+const CLASS_PREFIX_REGEX = /^\[CLASE\]\s*/i;
+const normalizeObservation = (value) => (typeof value === 'string' ? value.trim() : '');
+const isClassBlock = (block) => CLASS_PREFIX_REGEX.test(normalizeObservation(block?.observaciones));
+const getClassDisplayName = (block) => {
+  const normalized = normalizeObservation(block?.observaciones);
+  if (!normalized) return 'Clase';
+  const stripped = normalized.replace(CLASS_PREFIX_REGEX, '').trim();
+  return stripped || 'Clase';
+};
 
 const SpaceDetail = () => {
   const { id } = useParams();
@@ -128,7 +139,27 @@ const SpaceDetail = () => {
 
     const eventList = [];
 
-    // Blocks
+    // Blocks and class schedule entries
+    const pushScheduleEvent = (startMoment, endMoment, block) => {
+      if (!startMoment.isValid() || !endMoment.isValid()) return;
+      const isClass = isClassBlock(block);
+      const observation = normalizeObservation(block?.observaciones);
+      const classLabel = isClass ? getClassDisplayName(block) : null;
+      const title = isClass
+        ? `Clase${classLabel ? ` - ${classLabel}` : ''}`
+        : observation
+          ? `Bloqueado (${observation})`
+          : 'Bloqueado';
+
+      eventList.push({
+        title,
+        start: startMoment.toDate(),
+        end: endMoment.toDate(),
+        resource: { type: isClass ? 'class' : 'block', payload: block },
+        allDay: false,
+      });
+    };
+
     blocks.forEach((block) => {
       const startTime = withSeconds(block.hora_inicio);
       const endTime = withSeconds(block.hora_fin);
@@ -144,33 +175,19 @@ const SpaceDetail = () => {
         while (current.isSameOrBefore(rangeEnd, 'day')) {
           const startMoment = moment(`${current.format('YYYY-MM-DD')} ${startTime}`, 'YYYY-MM-DD HH:mm:ss');
           const endMoment = moment(`${current.format('YYYY-MM-DD')} ${endTime}`, 'YYYY-MM-DD HH:mm:ss');
-          if (startMoment.isValid() && endMoment.isValid()) {
-            eventList.push({
-              title: block.observaciones ? `Bloqueado (${block.observaciones})` : 'Bloqueado',
-              start: startMoment.toDate(),
-              end: endMoment.toDate(),
-              resource: { type: 'block', payload: block },
-              allDay: false,
-            });
-          }
+          pushScheduleEvent(startMoment, endMoment, block);
           current = current.add(7, 'days');
         }
       } else if (block.fecha_inicio && block.fecha_fin) {
         const startMoment = moment(`${block.fecha_inicio} ${startTime}`, 'YYYY-MM-DD HH:mm:ss');
         const endMoment = moment(`${block.fecha_fin} ${endTime}`, 'YYYY-MM-DD HH:mm:ss');
-        if (startMoment.isValid() && endMoment.isValid()) {
-          if (
-            startMoment.isBefore(rangeEnd) &&
-            endMoment.isAfter(rangeStart)
-          ) {
-            eventList.push({
-              title: block.observaciones ? `Bloqueado (${block.observaciones})` : 'Bloqueado',
-              start: startMoment.toDate(),
-              end: endMoment.toDate(),
-              resource: { type: 'block', payload: block },
-              allDay: false,
-            });
-          }
+        if (
+          startMoment.isValid() &&
+          endMoment.isValid() &&
+          startMoment.isBefore(rangeEnd) &&
+          endMoment.isAfter(rangeStart)
+        ) {
+          pushScheduleEvent(startMoment, endMoment, block);
         }
       }
     });
@@ -358,6 +375,15 @@ const SpaceDetail = () => {
         },
       };
     }
+    if (type === 'class') {
+      return {
+        style: {
+          backgroundColor: '#6f42c1',
+          borderColor: '#6f42c1',
+          color: '#fff',
+        },
+      };
+    }
     if (type === 'reservation') {
       return {
         style: {
@@ -421,29 +447,36 @@ const SpaceDetail = () => {
   }
 
   return (
-    <div className="space-availability">
-      <div className="d-flex flex-wrap justify-content-between align-items-start gap-3 mb-4">
-        <div>
-          <h1 className="mb-1">{space.nombre}</h1>
-          <p className="text-muted mb-2">{space.descripcion || 'Sin descripcion disponible.'}</p>
-          <div className="d-flex flex-wrap gap-2 text-muted small">
-            <span>Codigo: {space.codigo}</span>
-            <span>| Capacidad: {space.capacidad ?? 'N/D'}</span>
-            <span>| Ubicacion: {space.ubicacion_display || space.ubicacion || 'No definida'}</span>
+    <div className="space-availability container-xxl py-4">
+      <div className="reservations-hero mb-4">
+        <div className="d-flex flex-wrap justify-content-between align-items-start gap-3">
+          <div>
+            <p className="text-uppercase small mb-2">Ficha del espacio</p>
+            <h1 className="mb-2 text-white">{space.nombre}</h1>
+            <p className="mb-3 text-white-50">
+              {space.descripcion || 'Sin descripcion disponible.'}
+            </p>
+            <div className="d-flex flex-wrap gap-3 text-white-50 small">
+              <span>Codigo: {space.codigo}</span>
+              <span>Capacidad: {space.capacidad ?? 'N/D'}</span>
+              <span>Ubicacion: {space.ubicacion_display || space.ubicacion || 'No definida'}</span>
+            </div>
           </div>
-        </div>
-        <div className="d-flex flex-wrap gap-2">
-          <Link
-            to={`/reservations/create?espacio=${space.id}`}
-            className="btn btn-success"
-          >
-            Formulario de reserva
-          </Link>
-          <Link to="/spaces" className="btn btn-outline-secondary">Volver a espacios</Link>
+          <div className="d-flex flex-wrap gap-2">
+            <Link to="/spaces" className="btn btn-outline-light">
+              Volver a espacios
+            </Link>
+            <Link
+              to={`/reservations/create?espacio=${space.id}`}
+              className="btn btn-light text-success fw-semibold"
+            >
+              Reservar este espacio
+            </Link>
+          </div>
         </div>
       </div>
 
-      <div className="alert alert-light border mb-4">
+      <div className="card-elevated mb-4 p-4 bg-white">
         <strong>Como reservar:</strong> Selecciona una franja libre dentro del calendario (bloqueos en rojo, reservas existentes en naranja). Luego confirma la reserva para completar los detalles.
       </div>
 
@@ -451,18 +484,54 @@ const SpaceDetail = () => {
 
       <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
         <div className="d-flex gap-2">
-          <button className="btn btn-outline-success" onClick={() => setView('month')}>Mes</button>
-          <button className="btn btn-outline-success" onClick={() => setView('week')}>Semana</button>
-          <button className="btn btn-outline-success" onClick={() => setView('day')}>Dia</button>
+          <button
+            type="button"
+            className={`btn btn-outline-success${view === 'month' ? ' active' : ''}`}
+            onClick={() => setView('month')}
+            aria-pressed={view === 'month'}
+          >
+            Mes
+          </button>
+          <button
+            type="button"
+            className={`btn btn-outline-success${view === 'week' ? ' active' : ''}`}
+            onClick={() => setView('week')}
+            aria-pressed={view === 'week'}
+          >
+            Semana
+          </button>
+          <button
+            type="button"
+            className={`btn btn-outline-success${view === 'day' ? ' active' : ''}`}
+            onClick={() => setView('day')}
+            aria-pressed={view === 'day'}
+          >
+            Dia
+          </button>
         </div>
         <div className="d-flex gap-2">
-          <button className="btn btn-outline-secondary" onClick={() => handleNavigate(moment(date).subtract(1, view === 'month' ? 'month' : view === 'week' ? 'week' : 'day').toDate())}>Anterior</button>
-          <button className="btn btn-outline-secondary" onClick={() => handleNavigate(moment(date).add(1, view === 'month' ? 'month' : view === 'week' ? 'week' : 'day').toDate())}>Siguiente</button>
-          <button className="btn btn-primary" onClick={goToToday}>Hoy</button>
+          <button
+            type="button"
+            className="btn btn-outline-secondary"
+            onClick={() => handleNavigate(moment(date).subtract(1, view === 'month' ? 'month' : view === 'week' ? 'week' : 'day').toDate())}
+          >
+            Anterior
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline-secondary"
+            onClick={() => handleNavigate(moment(date).add(1, view === 'month' ? 'month' : view === 'week' ? 'week' : 'day').toDate())}
+          >
+            Siguiente
+          </button>
+          <button type="button" className="btn btn-primary" onClick={goToToday}>Hoy</button>
         </div>
       </div>
 
-      <div className="space-calendar mb-4">
+      <div
+        className="space-calendar mb-4"
+        style={{ height: view === 'month' ? '720px' : '640px' }}
+      >
         <Calendar
           localizer={localizer}
           events={events}
@@ -490,6 +559,7 @@ const SpaceDetail = () => {
       <div className="space-legend mb-4">
         <span className="legend-item"><span className="legend-color legend-free" /> Disponible</span>
         <span className="legend-item"><span className="legend-color legend-block" /> Bloqueado</span>
+        <span className="legend-item"><span className="legend-color legend-class" /> Clase</span>
         <span className="legend-item"><span className="legend-color legend-reservation" /> Reservado</span>
       </div>
 

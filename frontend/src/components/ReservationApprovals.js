@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import api from '../api';
 import { canApproveReservations, getUserRole } from '../utils/auth';
 
@@ -12,6 +12,116 @@ const formatDate = (value) => {
   return new Date(value).toLocaleDateString();
 };
 
+const ApprovalCard = ({
+  reservation,
+  onView,
+  onApprove,
+  onReject,
+  actionLoading,
+}) => {
+  const space = reservation?.espacio_detalle;
+  const requester = reservation?.usuario_detalle;
+  const type = (space?.tipo || 'Espacio').toLowerCase();
+
+  const typeTagClass = type.includes('labor')
+    ? 'tag is-info'
+    : type.includes('aula')
+      ? 'tag'
+      : 'tag is-warning';
+
+  return (
+    <div className="reservation-card">
+      <div className="reservation-card__header">
+        <div>
+          <h3 className="reservation-card__heading">
+            {space?.nombre || reservation.espacio || 'Espacio sin nombre'}
+          </h3>
+          <div className="reservation-card__meta">
+            {space?.ubicacion_display || space?.ubicacion || 'Ubicacion sin definir'}
+          </div>
+        </div>
+        <div className="d-flex flex-column align-items-end gap-2">
+          <span className={typeTagClass}>{space?.tipo || 'Espacio'}</span>
+          <button
+            type="button"
+            className="btn btn-link btn-sm text-decoration-none px-0"
+            onClick={() => onView(reservation)}
+          >
+            Ver detalle
+          </button>
+        </div>
+      </div>
+
+      <div className="reservation-card__body">
+        <div>
+          <div className="text-muted text-uppercase small fw-semibold mb-1">Solicitante</div>
+          <div className="fw-semibold">
+            {requester?.nombre || 'Sin asignar'}
+          </div>
+          <div className="reservation-card__meta">
+            {requester?.email || 'Sin correo'} | {requester?.rol || 'Rol no disponible'}
+          </div>
+        </div>
+
+        <div className="reservation-card__timeline">
+          <div className="d-flex justify-content-between">
+            <span>Inicio</span>
+            <span>{formatDateTime(reservation.fecha_inicio)}</span>
+          </div>
+          <div className="d-flex justify-content-between">
+            <span>Fin</span>
+            <span>{formatDateTime(reservation.fecha_fin)}</span>
+          </div>
+          <div className="d-flex justify-content-between">
+            <span>Creada</span>
+            <span>{formatDateTime(reservation.creado_en)}</span>
+          </div>
+        </div>
+
+        <p className="text-muted small mb-0">
+          {reservation.motivo || 'Sin motivo registrado.'}
+        </p>
+        <div className="d-flex flex-wrap gap-2 small">
+          {reservation.cantidad_asistentes ? (
+            <span className="badge bg-light text-success border">
+              {reservation.cantidad_asistentes} asistentes
+            </span>
+          ) : null}
+          {reservation.requiere_llaves ? (
+            <span className="badge bg-light text-success border">Requiere llaves</span>
+          ) : null}
+          {reservation.recurrente ? (
+            <span className="badge bg-light text-success border">
+              Recurrente
+            </span>
+          ) : null}
+        </div>
+      </div>
+
+      <div className="reservation-card__footer">
+        <div className="d-flex flex-wrap gap-2 justify-content-end">
+          <button
+            type="button"
+            className="btn btn-outline-danger btn-sm"
+            disabled={actionLoading}
+            onClick={() => onReject(reservation.id)}
+          >
+            Rechazar
+          </button>
+          <button
+            type="button"
+            className="btn btn-success btn-sm"
+            disabled={actionLoading}
+            onClick={() => onApprove(reservation.id)}
+          >
+            Aprobar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ReservationApprovals = () => {
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,6 +129,8 @@ const ReservationApprovals = () => {
   const [feedback, setFeedback] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [selectedReservation, setSelectedReservation] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [typeFilter, setTypeFilter] = useState('todos');
 
   const role = getUserRole();
   const canManage = canApproveReservations();
@@ -44,6 +156,44 @@ const ReservationApprovals = () => {
 
     fetchReservations();
   }, [canManage]);
+
+  const typeOptions = useMemo(() => {
+    const types = new Set();
+    reservations.forEach((item) => {
+      const type = (item?.espacio_detalle?.tipo || '').toLowerCase();
+      if (type) types.add(type);
+    });
+    return Array.from(types);
+  }, [reservations]);
+
+  const metrics = useMemo(() => {
+    const total = reservations.length;
+    const labs = reservations.filter(
+      (item) => (item?.espacio_detalle?.tipo || '').toLowerCase() === 'laboratorio'
+    ).length;
+    const aulas = reservations.filter(
+      (item) => (item?.espacio_detalle?.tipo || '').toLowerCase() === 'aula'
+    ).length;
+    return { total, labs, aulas, others: total - labs - aulas };
+  }, [reservations]);
+
+  const filteredReservations = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    return reservations.filter((reservation) => {
+      const spaceName = reservation?.espacio_detalle?.nombre || '';
+      const requester = reservation?.usuario_detalle?.nombre || '';
+      const motive = reservation?.motivo || '';
+      const type = (reservation?.espacio_detalle?.tipo || '').toLowerCase();
+
+      const matchesSearch =
+        !term ||
+        [spaceName, requester, motive].some((value) =>
+          value.toLowerCase().includes(term)
+        );
+      const matchesType = typeFilter === 'todos' || type === typeFilter;
+      return matchesSearch && matchesType;
+    });
+  }, [reservations, searchTerm, typeFilter]);
 
   const applyAction = async (reservationId, action) => {
     setActionLoading(true);
@@ -95,11 +245,69 @@ const ReservationApprovals = () => {
   }
 
   return (
-    <div className="reservation-approvals">
-      <div className="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-4">
-        <div>
-          <h1 className="mb-1">Solicitudes de reserva</h1>
-          <p className="text-muted mb-0">Aprueba o rechaza las solicitudes pendientes para los espacios a tu cargo.</p>
+    <div className="reservation-approvals container-xxl py-4">
+      <div className="reservations-hero mb-4">
+        <div className="d-flex flex-wrap justify-content-between align-items-start gap-3">
+          <div>
+            <p className="text-uppercase small mb-2">Panel de aprobaciones</p>
+            <h1 className="mb-2">Gestiona solicitudes pendientes con rapidez</h1>
+            <p className="mb-0">
+              Revisa los detalles clave de cada reserva, comunica decisiones y mantente coordinado con los solicitantes.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="row g-3 mb-4">
+        <div className="col-md-4">
+          <div className="card-elevated h-100 p-4 bg-white d-flex flex-column gap-2">
+            <span className="text-muted text-uppercase small">Pendientes</span>
+            <span className="display-6 mb-1 text-success fw-semibold">{metrics.total}</span>
+            <span className="small text-muted">
+              Laboratorios: {metrics.labs} | Aulas: {metrics.aulas} | Otros: {metrics.others}
+            </span>
+          </div>
+        </div>
+        <div className="col-md-8">
+          <div className="card-elevated h-100 p-4 bg-white">
+            <div className="row g-3 align-items-center">
+              <div className="col-lg-6">
+                <label htmlFor="approvalSearch" className="form-label text-muted small text-uppercase mb-1">
+                  Buscar
+                </label>
+                <input
+                  id="approvalSearch"
+                  type="search"
+                  className="form-control"
+                  placeholder="Espacio, solicitante o motivo"
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                />
+              </div>
+              <div className="col-lg-6">
+                <span className="text-muted small text-uppercase d-block mb-1">Filtrar por tipo</span>
+                <div className="d-flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    className={`btn btn-sm btn-outline-success ${typeFilter === 'todos' ? 'active' : ''}`}
+                    onClick={() => setTypeFilter('todos')}
+                  >
+                    Todos
+                  </button>
+                  {typeOptions.map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      className={`btn btn-sm btn-outline-success ${typeFilter === option ? 'active' : ''}`}
+                      onClick={() => setTypeFilter(option)}
+                    >
+                      {option.charAt(0).toUpperCase() + option.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -108,66 +316,24 @@ const ReservationApprovals = () => {
 
       {reservations.length === 0 ? (
         <div className="alert alert-info">No hay solicitudes pendientes.</div>
+      ) : filteredReservations.length === 0 ? (
+        <div className="alert alert-light border">
+          <h5 className="mb-1">No encontramos solicitudes con el filtro aplicado.</h5>
+          <p className="text-muted small mb-0">Prueba ajustar la busqueda o cambiar el tipo de espacio.</p>
+        </div>
       ) : (
-        <div className="table-responsive">
-          <table className="table align-middle">
-            <thead>
-              <tr>
-                <th>Espacio</th>
-                <th>Solicitante</th>
-                <th>Inicio</th>
-                <th>Fin</th>
-                <th>Motivo</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {reservations.map((reservation) => (
-                <tr key={reservation.id}>
-                  <td>
-                    <div className="fw-semibold">{reservation.espacio_detalle?.nombre || reservation.espacio}</div>
-                    <div className="text-muted small text-capitalize">
-                      {reservation.espacio_detalle?.tipo}
-                    </div>
-                  </td>
-                  <td>
-                    <div>{reservation.usuario_detalle?.nombre || 'Sin asignar'}</div>
-                    <div className="text-muted small">{reservation.usuario_detalle?.email}</div>
-                  </td>
-                  <td>{formatDateTime(reservation.fecha_inicio)}</td>
-                  <td>{formatDateTime(reservation.fecha_fin)}</td>
-                  <td className="text-muted">{reservation.motivo || 'Sin motivo'}</td>
-                  <td className="text-end">
-                    <div className="btn-group">
-                      <button
-                        type="button"
-                        className="btn btn-outline-primary btn-sm"
-                        onClick={() => setSelectedReservation(reservation)}
-                      >
-                        Ver detalle
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-outline-success btn-sm"
-                        disabled={actionLoading}
-                        onClick={() => applyAction(reservation.id, 'aprobar')}
-                      >
-                        Aprobar
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-outline-danger btn-sm"
-                        disabled={actionLoading}
-                        onClick={() => applyAction(reservation.id, 'rechazar')}
-                      >
-                        Rechazar
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="row g-4">
+          {filteredReservations.map((reservation) => (
+            <div key={reservation.id} className="col-xl-4 col-lg-6">
+              <ApprovalCard
+                reservation={reservation}
+                onView={setSelectedReservation}
+                onApprove={(id) => applyAction(id, 'aprobar')}
+                onReject={(id) => applyAction(id, 'rechazar')}
+                actionLoading={actionLoading}
+              />
+            </div>
+          ))}
         </div>
       )}
 
