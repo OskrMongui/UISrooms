@@ -4,8 +4,7 @@ from datetime import date, timedelta
 from django.db import transaction
 
 from rest_framework import serializers
-
-from .models import Reserva, ReservaEstadoHistorial
+from .models import Reserva, ReservaEstadoHistorial, EstadoReserva
 
 SEMESTER_START = date(2025, 8, 4)
 SEMESTER_END = date(2025, 11, 28)
@@ -122,6 +121,18 @@ class ReservaSerializer(serializers.ModelSerializer):
             if 'rrule' not in data:
                 data['rrule'] = None
             self._recurrence_weeks = 1
+
+        if inicio and fin and espacio:
+            conflictos_aprobados = Reserva.objects.solapa(
+                espacio,
+                inicio,
+                fin,
+                estados=[EstadoReserva.APROBADO],
+            )
+            if self.instance:
+                conflictos_aprobados = conflictos_aprobados.exclude(pk=self.instance.pk)
+            if conflictos_aprobados.exists():
+                raise serializers.ValidationError("El espacio no esta disponible en el horario seleccionado.")
 
         if not self.instance and inicio and fin and espacio:
             ocurrencias = [(inicio, fin)]

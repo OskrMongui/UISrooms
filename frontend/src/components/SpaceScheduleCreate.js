@@ -47,6 +47,12 @@ const RESERVATION_EVENT_STYLE = {
   borderColor: '#fd7e14',
   color: '#212529'
 };
+const PENDING_RESERVATION_EVENT_STYLE = {
+  backgroundColor: 'rgba(108, 117, 125, 0.15)',
+  borderColor: '#6c757d',
+  color: '#212529',
+  borderStyle: 'dashed'
+};
 const READONLY_BLOCK_STYLE = {
   backgroundColor: 'rgba(220, 53, 69, 0.15)',
   borderColor: '#dc3545',
@@ -280,7 +286,7 @@ const SpaceScheduleCreate = ({ mode = 'block' }) => {
       const reservationsData = Array.isArray(reservationsResponse.data)
         ? reservationsResponse.data.filter((reservation) => {
             const state = (reservation.estado || '').toLowerCase();
-            return state !== 'cancelado' && state !== 'rechazado';
+            return state !== 'rechazado';
           })
         : [];
 
@@ -391,21 +397,30 @@ const SpaceScheduleCreate = ({ mode = 'block' }) => {
     reservations.forEach((reservation) => {
       if (!reservation.fecha_inicio || !reservation.fecha_fin) return;
 
+      const status = String(reservation.estado || '').toLowerCase();
+      if (status === 'rechazado') return;
+      const isPendingReservation = status === 'pendiente';
+
       const baseStart = moment(reservation.fecha_inicio);
       const baseEnd = moment(reservation.fecha_fin);
       if (!baseStart.isValid() || !baseEnd.isValid()) return;
 
       const titleParts = [];
-      if (reservation.usuario && reservation.usuario.first_name) {
-        titleParts.push(reservation.usuario.first_name);
+      const requesterName =
+        reservation.usuario_detalle?.nombre ||
+        reservation.usuario?.first_name ||
+        reservation.usuario?.username;
+      if (requesterName) {
+        titleParts.push(requesterName);
       }
       if (reservation.motivo) {
         titleParts.push(reservation.motivo);
       }
       if (!titleParts.length) {
-        titleParts.push('Reserva confirmada');
+        titleParts.push('Reserva');
       }
-      const title = titleParts.join(' - ');
+      const baseTitle = titleParts.join(' - ');
+      const title = isPendingReservation ? `[Pendiente] ${baseTitle}` : baseTitle;
 
       const recurrencia = (reservation.metadata && reservation.metadata.recurrencia) || {};
       const occurrenceNumber = parsePositiveInt(recurrencia.ocurrencia) || 1;
@@ -425,9 +440,11 @@ const SpaceScheduleCreate = ({ mode = 'block' }) => {
           allDay: false,
           resource: {
             type: 'reservation',
+            status,
             payload: reservation,
             occurrence: occurrenceIndex,
-            totalOccurrences
+            totalOccurrences,
+            blocksSelection: !isPendingReservation
           }
         });
       };
@@ -757,8 +774,15 @@ const SpaceScheduleCreate = ({ mode = 'block' }) => {
       }
 
       if (resource.type === 'reservation') {
+        const status = resource.status;
+        if (status === 'pendiente') {
+          return {
+            className: 'space-reservation-event pending',
+            style: { ...PENDING_RESERVATION_EVENT_STYLE }
+          };
+        }
         return {
-          className: 'space-reservation-event',
+          className: 'space-reservation-event approved',
           style: { ...RESERVATION_EVENT_STYLE }
         };
       }

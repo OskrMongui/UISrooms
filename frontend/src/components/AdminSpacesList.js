@@ -32,7 +32,7 @@ const AdminSpacesList = () => {
     }
     setError('');
     try {
-      const response = await api.get('espacios/');
+      const response = await api.get('espacios/?incluir_inactivos=1');
       setSpaces(response.data);
     } catch (err) {
       setError('No fue posible cargar los espacios. Intentalo de nuevo.');

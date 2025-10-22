@@ -58,6 +58,33 @@ const SpaceEdit = () => {
     }));
   };
 
+  const extractErrorMessage = (payload) => {
+    if (!payload) {
+      return 'Error al actualizar espacio';
+    }
+    if (typeof payload === 'string') {
+      return payload;
+    }
+    if (Array.isArray(payload)) {
+      return payload.map(String).join(' ');
+    }
+    if (typeof payload === 'object') {
+      const [firstKey] = Object.keys(payload);
+      if (!firstKey) {
+        return 'Error al actualizar espacio';
+      }
+      const value = payload[firstKey];
+      if (Array.isArray(value)) {
+        return value.map(String).join(' ');
+      }
+      if (value && typeof value === 'object') {
+        return extractErrorMessage(value);
+      }
+      return String(value);
+    }
+    return 'Error al actualizar espacio';
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setLoading(true);
@@ -71,8 +98,8 @@ const SpaceEdit = () => {
       await api.put(`espacios/${id}/`, data);
       navigate('/admin/spaces');
     } catch (err) {
-      const readable = err.response?.data?.detail || err.response?.data || 'Error al actualizar espacio';
-      setError(typeof readable === 'string' ? readable : 'Error al actualizar espacio');
+      const payload = err.response?.data?.detail || err.response?.data;
+      setError(extractErrorMessage(payload));
     } finally {
       setLoading(false);
     }

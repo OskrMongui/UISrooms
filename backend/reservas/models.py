@@ -9,17 +9,16 @@ from django.contrib.postgres.constraints import ExclusionConstraint
 
 class EstadoReserva(models.TextChoices):
     PENDIENTE = 'pendiente', 'Pendiente'
-    APROBADO = 'aprobado', 'Aprobado'
-    RECHAZADO = 'rechazado', 'Rechazado'
-    CANCELADO = 'cancelado', 'Cancelado'
-    REAGENDADO = 'reagendado', 'Reagendado'
+    APROBADO = 'aprobado', 'Aprobada'
+    RECHAZADO = 'rechazado', 'Rechazada'
 
 class ReservaManager(models.Manager):
-    def solapa(self, espacio, inicio, fin):
+    def solapa(self, espacio, inicio, fin, estados=None):
+        estados = estados or [EstadoReserva.APROBADO]
         periodo = (inicio, fin)
         return self.get_queryset().filter(
             espacio=espacio,
-            estado__in=[EstadoReserva.PENDIENTE, EstadoReserva.APROBADO, EstadoReserva.REAGENDADO]
+            estado__in=estados
         ).filter(periodo__overlap=periodo)
 
     def disponible(self, espacio, inicio, fin):
@@ -54,7 +53,7 @@ class Reserva(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"Reserva {self.id} - {self.espacio} ({self.fecha_inicio} → {self.fecha_fin})"
+        return f"Reserva {self.id} - {self.espacio} ({self.fecha_inicio} -> {self.fecha_fin})"
 
     class Meta:
         verbose_name = "reserva"
@@ -71,7 +70,7 @@ class Reserva(models.Model):
                     (F('espacio'), '='),
                     (F('periodo'), '&&'),
                 ],
-                condition=~Q(estado__in=[EstadoReserva.RECHAZADO, EstadoReserva.CANCELADO])
+                condition=Q(estado=EstadoReserva.APROBADO)
             )
         ]
 
@@ -88,5 +87,6 @@ class ReservaEstadoHistorial(models.Model):
     class Meta:
         verbose_name = "reserva_estado_historial"
         verbose_name_plural = "reservas_estado_historial"
+
 
 

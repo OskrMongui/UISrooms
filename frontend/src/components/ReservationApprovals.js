@@ -209,8 +209,32 @@ const ReservationApprovals = () => {
         }
         comentario = userComment;
       }
+      const targetReservation = reservations.find((item) => item.id === reservationId);
       await api.post(`reservas/${reservationId}/${action}/`, { comentario });
-      setReservations((prev) => prev.filter((item) => item.id !== reservationId));
+      if (action === 'aprobar' && targetReservation) {
+        const targetStart = new Date(targetReservation.fecha_inicio).getTime();
+        const targetEnd = new Date(targetReservation.fecha_fin).getTime();
+        setReservations((prev) =>
+          prev.filter((item) => {
+            if (item.id === reservationId) {
+              return false;
+            }
+            if (String(item.espacio) !== String(targetReservation.espacio)) {
+              return true;
+            }
+            const itemStart = new Date(item.fecha_inicio).getTime();
+            const itemEnd = new Date(item.fecha_fin).getTime();
+            const overlaps =
+              Number.isFinite(itemStart) &&
+              Number.isFinite(itemEnd) &&
+              itemStart < targetEnd &&
+              itemEnd > targetStart;
+            return !overlaps;
+          })
+        );
+      } else {
+        setReservations((prev) => prev.filter((item) => item.id !== reservationId));
+      }
       setFeedback(action === 'aprobar' ? 'Reserva aprobada correctamente.' : 'Reserva rechazada.');
       setSelectedReservation((prev) => (prev?.id === reservationId ? null : prev));
     } catch (err) {

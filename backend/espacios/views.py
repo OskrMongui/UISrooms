@@ -7,9 +7,17 @@ BOOLEAN_FALSE_VALUES = {'false', '0', 'no', 'off'}
 BOOLEAN_TRUE_VALUES = {'true', '1', 'yes', 'on'}
 
 class EspacioViewSet(viewsets.ModelViewSet):
-    queryset = Espacio.objects.filter(activo=True)
     serializer_class = EspacioSerializer
     permission_classes = [IsAdminUser]
+
+    def get_queryset(self):
+        queryset = Espacio.objects.all()
+        if self.action == 'list':
+            include_param = self.request.query_params.get('incluir_inactivos')
+            include_inactive = isinstance(include_param, str) and include_param.strip().lower() in BOOLEAN_TRUE_VALUES
+            if not include_inactive:
+                queryset = queryset.filter(activo=True)
+        return queryset
 
 class DisponibilidadEspacioViewSet(viewsets.ModelViewSet):
     serializer_class = DisponibilidadEspacioSerializer

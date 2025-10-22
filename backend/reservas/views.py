@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.db.models import Q
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
@@ -122,9 +123,40 @@ class ReservaViewSet(viewsets.ModelViewSet):
             return Response({"detail": "No tienes permisos para aprobar esta reserva."}, status=status.HTTP_403_FORBIDDEN)
 
         comentario = request.data.get("comentario", "")
-        self._register_historial(reserva, EstadoReserva.APROBADO, comentario, request.user)
-        reserva.estado = EstadoReserva.APROBADO
-        reserva.save(update_fields=["estado", "actualizado_en"])
+        conflictos_aprobados = Reserva.objects.solapa(
+            reserva.espacio,
+            reserva.fecha_inicio,
+            reserva.fecha_fin,
+            estados=[EstadoReserva.APROBADO],
+        ).exclude(pk=reserva.pk)
+        if conflictos_aprobados.exists():
+            return Response(
+                {"detail": "Ya existe una reserva aprobada que se cruza con este horario."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        with transaction.atomic():
+            self._register_historial(reserva, EstadoReserva.APROBADO, comentario, request.user)
+            reserva.estado = EstadoReserva.APROBADO
+            reserva.save(update_fields=["estado", "actualizado_en"])
+
+            pendientes_conflictivos = Reserva.objects.solapa(
+                reserva.espacio,
+                reserva.fecha_inicio,
+                reserva.fecha_fin,
+                estados=[EstadoReserva.PENDIENTE],
+            ).exclude(pk=reserva.pk).select_for_update()
+
+            for otra_reserva in pendientes_conflictivos:
+                self._register_historial(
+                    otra_reserva,
+                    EstadoReserva.RECHAZADO,
+                    "Rechazada automaticamente por aprobacion de otra reserva en el mismo horario.",
+                    request.user,
+                )
+                otra_reserva.estado = EstadoReserva.RECHAZADO
+                otra_reserva.save(update_fields=["estado", "actualizado_en"])
+
         serializer = self.get_serializer(reserva)
         return Response(serializer.data, status=status.HTTP_200_OK)
 

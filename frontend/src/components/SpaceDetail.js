@@ -81,6 +81,8 @@ const getClassDisplayName = (block) => {
   return stripped || 'Clase';
 };
 
+const INACTIVE_MESSAGE = 'Este espacio esta inactivo, no es posible reservarlo.';
+
 const SpaceDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -114,7 +116,7 @@ const SpaceDetail = () => {
         const filteredReservations = Array.isArray(reservationsRes.data)
           ? reservationsRes.data.filter((reservation) => {
               const state = (reservation.estado || '').toLowerCase();
-              return state !== 'cancelado' && state !== 'rechazado';
+              return state !== 'rechazado';
             })
           : [];
 
@@ -129,6 +131,18 @@ const SpaceDetail = () => {
     fetchData();
   }, [id]);
 
+  useEffect(() => {
+    if (!space) return;
+    if (space.activo === false) {
+      setSelectedSlot(null);
+      if (feedback && feedback !== INACTIVE_MESSAGE) {
+        setFeedback('');
+      }
+    } else if (feedback === INACTIVE_MESSAGE) {
+      setFeedback('');
+    }
+  }, [space, feedback]);
+
   const events = useMemo(() => {
     if (!date || !view) return [];
 
@@ -138,6 +152,16 @@ const SpaceDetail = () => {
       view === 'month' ? moment(date).endOf('month') : view === 'week' ? moment(date).endOf('week') : moment(date).endOf('day');
 
     const eventList = [];
+
+    if (space && space.activo === false) {
+      eventList.push({
+        title: 'Espacio inactivo',
+        start: rangeStart.toDate(),
+        end: rangeEnd.toDate(),
+        resource: { type: 'inactive' },
+        allDay: true,
+      });
+    }
 
     // Blocks and class schedule entries
     const pushScheduleEvent = (startMoment, endMoment, block) => {
@@ -196,21 +220,32 @@ const SpaceDetail = () => {
     reservations.forEach((reservation) => {
       if (!reservation.fecha_inicio || !reservation.fecha_fin) return;
 
+      const status = String(reservation.estado || '').toLowerCase();
+      if (status === 'rechazado') {
+        return;
+      }
+      const isPendingReservation = status === 'pendiente';
+
       const baseStart = moment(reservation.fecha_inicio);
       const baseEnd = moment(reservation.fecha_fin);
       if (!baseStart.isValid() || !baseEnd.isValid()) return;
 
       const titleParts = [];
-      if (reservation.usuario && reservation.usuario.first_name) {
-        titleParts.push(reservation.usuario.first_name);
+      const requesterName =
+        reservation.usuario_detalle?.nombre ||
+        reservation.usuario?.first_name ||
+        reservation.usuario?.username;
+      if (requesterName) {
+        titleParts.push(requesterName);
       }
       if (reservation.motivo) {
         titleParts.push(reservation.motivo);
       }
       if (!titleParts.length) {
-        titleParts.push('Reserva confirmada');
+        titleParts.push('Reserva');
       }
-      const title = titleParts.join(' - ');
+      const baseTitle = titleParts.join(' - ');
+      const title = isPendingReservation ? `[Pendiente] ${baseTitle}` : baseTitle;
 
       const recurrencia = (reservation.metadata && reservation.metadata.recurrencia) || {};
       const occurrenceNumber = parsePositiveInt(recurrencia.ocurrencia) || 1;
@@ -229,9 +264,11 @@ const SpaceDetail = () => {
           end: endMoment.toDate(),
           resource: {
             type: 'reservation',
+            status,
             payload: reservation,
             occurrence: occurrenceIndex,
             totalOccurrences,
+            blocksSelection: !isPendingReservation,
           },
           allDay: false,
         });
@@ -251,11 +288,18 @@ const SpaceDetail = () => {
     });
 
     return eventList;
-  }, [blocks, reservations, date, view]);
+  }, [blocks, reservations, date, view, space]);
 
   const conflictsWithEvents = useCallback(
     (startMoment, endMoment) =>
       events.some((event) => {
+        const resource = event.resource || {};
+        if (resource.blocksSelection === false) {
+          return false;
+        }
+        if (resource.type === 'reservation' && resource.status !== 'aprobado') {
+          return false;
+        }
         const eventStart = moment(event.start);
         const eventEnd = moment(event.end);
         return startMoment.isBefore(eventEnd) && endMoment.isAfter(eventStart);
@@ -300,6 +344,12 @@ const SpaceDetail = () => {
 
   const handleSelectSlot = useCallback(
     ({ start, end }) => {
+      if (space && space.activo === false) {
+        setFeedback(INACTIVE_MESSAGE);
+        setSelectedSlot(null);
+        return;
+      }
+
       if (view === 'month' && (!end || moment(end).diff(start, 'minutes') >= 1440)) {
         setView('day');
         setDate(start);
@@ -339,7 +389,7 @@ const SpaceDetail = () => {
       setFeedback('');
       setSelectedSlot({ start: startMoment.toDate(), end: endMoment.toDate() });
     },
-    [view, conflictsWithEvents, isSlotWithinAvailability]
+    [view, conflictsWithEvents, isSlotWithinAvailability, space]
   );
 
   const handleNavigate = (nextDate) => {
@@ -355,7 +405,9 @@ const SpaceDetail = () => {
   };
 
   const handleReserve = () => {
-    if (!selectedSlot) return;
+    if (!selectedSlot || (space && space.activo === false)) {
+      return;
+    }
     const params = new URLSearchParams({
       espacio: id,
       inicio: formatInputDateTime(selectedSlot.start),
@@ -366,6 +418,16 @@ const SpaceDetail = () => {
 
   const eventPropGetter = useCallback((event) => {
     const type = event.resource?.type;
+    if (type === 'inactive') {
+      return {
+        style: {
+          backgroundColor: '#adb5bd',
+          borderColor: '#adb5bd',
+          color: '#212529',
+          opacity: 0.8,
+        },
+      };
+    }
     if (type === 'block') {
       return {
         style: {
@@ -385,6 +447,17 @@ const SpaceDetail = () => {
       };
     }
     if (type === 'reservation') {
+      const status = event.resource?.status;
+      if (status === 'pendiente') {
+        return {
+          style: {
+            backgroundColor: 'rgba(108, 117, 125, 0.15)',
+            borderColor: '#6c757d',
+            color: '#212529',
+            borderStyle: 'dashed',
+          },
+        };
+      }
       return {
         style: {
           backgroundColor: '#fd7e14',
@@ -403,6 +476,15 @@ const SpaceDetail = () => {
 
       if (startMoment.hour() < CALENDAR_START_HOUR || startMoment.hour() >= CALENDAR_END_HOUR) {
         return {};
+      }
+
+      if (space && space.activo === false) {
+        return {
+          style: {
+            backgroundColor: 'rgba(173, 181, 189, 0.35)',
+            cursor: 'not-allowed',
+          },
+        };
       }
 
       if (startMoment.isBefore(moment())) {
@@ -427,7 +509,7 @@ const SpaceDetail = () => {
         },
       };
     },
-    [conflictsWithEvents, isSlotWithinAvailability]
+    [conflictsWithEvents, isSlotWithinAvailability, space]
   );
 
   if (loading) {
@@ -460,27 +542,42 @@ const SpaceDetail = () => {
               <span>Codigo: {space.codigo}</span>
               <span>Capacidad: {space.capacidad ?? 'N/D'}</span>
               <span>Ubicacion: {space.ubicacion_display || space.ubicacion || 'No definida'}</span>
+              <span>Estado: {space.activo ? 'Activo' : 'Inactivo'}</span>
             </div>
           </div>
           <div className="d-flex flex-wrap gap-2">
             <Link to="/spaces" className="btn btn-outline-light">
               Volver a espacios
             </Link>
-            <Link
-              to={`/reservations/create?espacio=${space.id}`}
-              className="btn btn-light text-success fw-semibold"
-            >
-              Reservar este espacio
-            </Link>
+            {space.activo ? (
+              <Link
+                to={`/reservations/create?espacio=${space.id}`}
+                className="btn btn-light text-success fw-semibold"
+              >
+                Reservar este espacio
+              </Link>
+            ) : (
+              <button type="button" className="btn btn-light text-muted fw-semibold" disabled>
+                Espacio inactivo
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      <div className="card-elevated mb-4 p-4 bg-white">
-        <strong>Como reservar:</strong> Selecciona una franja libre dentro del calendario (bloqueos en rojo, reservas existentes en naranja). Luego confirma la reserva para completar los detalles.
-      </div>
+      {!space.activo && (
+        <div className="alert alert-warning mb-4">
+          Este espacio esta inactivo. Todas las franjas permanecen bloqueadas hasta que se reactive.
+        </div>
+      )}
 
-      {feedback && <div className="alert alert-warning">{feedback}</div>}
+      {space.activo && (
+        <div className="card-elevated mb-4 p-4 bg-white">
+          <strong>Como reservar:</strong> Selecciona una franja libre dentro del calendario (bloqueos en rojo, reservas aprobadas en naranja, solicitudes pendientes en gris punteado). Luego confirma la reserva para completar los detalles.
+        </div>
+      )}
+
+      {feedback && feedback !== INACTIVE_MESSAGE && <div className="alert alert-warning">{feedback}</div>}
 
       <div className="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
         <div className="d-flex gap-2">
@@ -561,6 +658,15 @@ const SpaceDetail = () => {
         <span className="legend-item"><span className="legend-color legend-block" /> Bloqueado</span>
         <span className="legend-item"><span className="legend-color legend-class" /> Clase</span>
         <span className="legend-item"><span className="legend-color legend-reservation" /> Reservado</span>
+        <span className="legend-item">
+          <span
+            className="legend-color"
+            style={{ backgroundColor: '#dee2e6', border: '1px dashed #6c757d' }}
+          /> Pendiente
+        </span>
+        <span className="legend-item">
+          <span className="legend-color" style={{ backgroundColor: '#adb5bd' }} /> Inactivo
+        </span>
       </div>
 
       {selectedSlot && (
@@ -578,7 +684,9 @@ const SpaceDetail = () => {
               </div>
               <div className="modal-footer">
                 <button type="button" className="btn btn-outline-secondary" onClick={() => setSelectedSlot(null)}>Cancelar</button>
-                <button type="button" className="btn btn-success" onClick={handleReserve}>Reservar esta franja</button>
+                <button type="button" className="btn btn-success" onClick={handleReserve} disabled={!space.activo}>
+                  Reservar esta franja
+                </button>
               </div>
             </div>
           </div>
@@ -589,3 +697,4 @@ const SpaceDetail = () => {
 };
 
 export default SpaceDetail;
+

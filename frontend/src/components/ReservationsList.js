@@ -6,16 +6,12 @@ const STATUS_VARIANTS = {
   pendiente: 'warning',
   aprobado: 'success',
   rechazado: 'danger',
-  cancelado: 'secondary',
-  reagendado: 'info',
 };
 
 const STATUS_LABELS = {
   pendiente: 'Pendiente',
-  aprobado: 'Aprobado',
-  rechazado: 'Rechazado',
-  cancelado: 'Cancelado',
-  reagendado: 'Reagendado',
+  aprobado: 'Aprobada',
+  rechazado: 'Rechazada',
 };
 
 const formatDateTime = (value) => {

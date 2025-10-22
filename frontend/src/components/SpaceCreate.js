@@ -32,6 +32,33 @@ const SpaceCreate = () => {
     }));
   };
 
+  const extractErrorMessage = (payload) => {
+    if (!payload) {
+      return 'Error al crear espacio';
+    }
+    if (typeof payload === 'string') {
+      return payload;
+    }
+    if (Array.isArray(payload)) {
+      return payload.map(String).join(' ');
+    }
+    if (typeof payload === 'object') {
+      const [firstKey] = Object.keys(payload);
+      if (!firstKey) {
+        return 'Error al crear espacio';
+      }
+      const value = payload[firstKey];
+      if (Array.isArray(value)) {
+        return value.map(String).join(' ');
+      }
+      if (value && typeof value === 'object') {
+        return extractErrorMessage(value);
+      }
+      return String(value);
+    }
+    return 'Error al crear espacio';
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setLoading(true);
@@ -45,8 +72,8 @@ const SpaceCreate = () => {
       await api.post('espacios/', data);
       navigate('/admin/spaces');
     } catch (err) {
-      const readable = err.response?.data?.detail || err.response?.data || 'Error al crear espacio';
-      setError(typeof readable === 'string' ? readable : 'Error al crear espacio');
+      const payload = err.response?.data?.detail || err.response?.data;
+      setError(extractErrorMessage(payload));
     } finally {
       setLoading(false);
     }

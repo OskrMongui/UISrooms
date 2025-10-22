@@ -9,7 +9,7 @@ CREATE EXTENSION IF NOT EXISTS btree_gist; -- para exclusion constraints con gis
 
 -- 2) Tipos enumerados (en español)
 CREATE TYPE tipo_espacio AS ENUM ('auditorio','salon','laboratorio','taller','otro');
-CREATE TYPE estado_reserva AS ENUM ('pendiente','aprobado','rechazado','cancelado','reagendado');
+CREATE TYPE estado_reserva AS ENUM ('pendiente','aprobado','rechazado');
 CREATE TYPE estado_llave AS ENUM ('disponible','prestada','perdida','mantenimiento');
 CREATE TYPE tipo_notificacion AS ENUM ('agenda','reserva','sistema','incidencia');
 CREATE TYPE estado_incidencia AS ENUM ('abierta','en_proceso','cerrada');
@@ -98,12 +98,12 @@ CREATE TABLE reservas (
     metadata JSONB DEFAULT '{}'::jsonb
 );
 
--- Evitar solapamientos de reservas aprobadas/pendientes para el mismo espacio
--- (se excluyen reservas canceladas o rechazadas)
+-- Evitar solapamientos de reservas aprobadas para el mismo espacio
+-- Las reservas pendientes pueden coexistir hasta ser aprobadas
 ALTER TABLE reservas
   ADD CONSTRAINT reservas_no_solapamiento
   EXCLUDE USING GIST (espacio_id WITH =, periodo WITH &&)
-  WHERE (estado <> 'rechazado' AND estado <> 'cancelado');
+  WHERE (estado = 'aprobado');
 
 CREATE INDEX idx_reservas_espacio_fecha ON reservas(espacio_id, fecha_inicio, fecha_fin);
 CREATE INDEX idx_reservas_estado ON reservas(estado);
@@ -222,3 +222,5 @@ CREATE INDEX idx_reservas_periodo ON reservas(periodo);
 -- Fin del esquema inicial. Revisar y adaptar según reglas de negocio específicas.
 -- NOTA: Para comprobar solapamientos por reglas más complejas (recurrentes, excepciones, llaves,etc.)
 -- se recomienda implementar validaciones adicionales a nivel de aplicación (Django) y/o triggers.
+
+
