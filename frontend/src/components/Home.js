@@ -46,6 +46,29 @@ const Home = () => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const userRole = useMemo(
+    () => (user?.rol?.nombre ? user.rol.nombre.toLowerCase() : ''),
+    [user]
+  );
+
+  const quickActionsList = useMemo(() => {
+    const base = quickActions.slice();
+    if (userRole === 'conserje') {
+      base.unshift({
+        title: 'Aperturas realizadas',
+        description: 'Revisa aperturas completadas y registra cierres pendientes.',
+        to: '/aperturas/verificacion',
+        badge: 'Conserjeria',
+      });
+      base.unshift({
+        title: 'Aperturas del dia',
+        description: 'Confirma aperturas programadas y registra asistencia.',
+        to: '/aperturas',
+        badge: 'Conserjeria',
+      });
+    }
+    return base;
+  }, [userRole]);
 
   useEffect(() => {
     const fetchDashboard = async () => {
@@ -95,8 +118,11 @@ const Home = () => {
     return reservations
       .filter((reservation) => {
         if (!reservation.fecha_inicio || !reservation.fecha_fin) return false;
-        const start = new Date(reservation.fecha_inicio);
+        const startDate = new Date(reservation.fecha_inicio);
         const end = new Date(reservation.fecha_fin);
+        if (Number.isNaN(startDate.getTime()) || Number.isNaN(end.getTime())) {
+          return false;
+        }
         return end >= now;
       })
       .sort((a, b) => new Date(a.fecha_inicio) - new Date(b.fecha_inicio))
@@ -267,7 +293,7 @@ const Home = () => {
               </div>              
             </div>
             <div className="row row-cols-1 row-cols-md-2 g-3">
-              {quickActions.map((action, index) => {
+              {quickActionsList.map((action, index) => {
                 const isPrimary = index < 2;
                 const cardClassName = `card h-100 shadow-sm quick-action-card ${
                   isPrimary ? 'quick-action-card--primary' : 'quick-action-card--secondary'

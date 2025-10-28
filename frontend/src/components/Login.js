@@ -6,6 +6,7 @@ const DEMO_USERS = [
   { role: 'Admin', username: 'admin_demo', password: 'Admin123!' },
   { role: 'Laboratorista', username: 'laboratorista_demo', password: 'Laboratorista123!' },
   { role: 'Secretaria', username: 'secretaria_demo', password: 'Secretaria123!' },
+  { role: 'Conserje', username: 'conserje_demo', password: 'Conserje123!' },
   { role: 'Profesor', username: 'profesor_demo', password: 'Profesor123!' },
 ];
 

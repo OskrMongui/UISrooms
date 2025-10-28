@@ -31,6 +31,9 @@ import ReservationApprovals from './components/ReservationApprovals';
 import Navbar from './components/Navbar';
 import ProtectedRoute from './components/ProtectedRoute';
 import Home from './components/Home';
+import ConciergeOpenings from './components/ConciergeOpenings';
+import ConciergeVerification from './components/ConciergeVerification';
+import AdminReports from './components/AdminReports';
 
 function App() {
   return (
@@ -46,6 +49,8 @@ function App() {
             <Route path="/reservations" element={<ProtectedRoute><ReservationsList /></ProtectedRoute>} />
             <Route path="/reservations/create" element={<ProtectedRoute><ReservationCreate /></ProtectedRoute>} />
             <Route path="/reservations/pending" element={<ProtectedRoute roles={['admin', 'secretaria', 'laboratorista']}><ReservationApprovals /></ProtectedRoute>} />
+            <Route path="/aperturas" element={<ProtectedRoute roles={['conserje']}><ConciergeOpenings /></ProtectedRoute>} />
+            <Route path="/aperturas/verificacion" element={<ProtectedRoute roles={['conserje']}><ConciergeVerification /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/incidencias" element={<ProtectedRoute><IncidenciasList /></ProtectedRoute>} />
             <Route path="/incidencias/create" element={<ProtectedRoute><IncidenciaCreate /></ProtectedRoute>} />
@@ -65,6 +70,7 @@ function App() {
             <Route path="/admin/spaces/:id/schedule" element={<ProtectedRoute admin><SpaceScheduleCreate /></ProtectedRoute>} />
             <Route path="/admin/spaces/:id/schedule/edit" element={<ProtectedRoute admin><SpaceScheduleEdit /></ProtectedRoute>} />
             <Route path="/admin/spaces/:id/class-schedule" element={<ProtectedRoute admin><SpaceClassSchedule /></ProtectedRoute>} />
+            <Route path="/admin/reportes" element={<ProtectedRoute admin><AdminReports /></ProtectedRoute>} />
           </Routes>
         </div>
       </div>

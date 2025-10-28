@@ -21,12 +21,24 @@ admin_rol, created = Rol.objects.get_or_create(
 if created:
     print('Created admin role')
 
+# Create conserje role if it doesn't exist
+conserje_rol, created = Rol.objects.get_or_create(
+    nombre='conserje',
+    defaults={
+        'descripcion': 'Responsable de aperturas diarias y control de accesos',
+        'permisos': {'aperturas': 'manage', 'llaves': 'manage'}
+    }
+)
+if created:
+    print('Created conserje role')
+
 # Create test users
 users = [
     {'username': 'admin', 'email': 'admin@uis.edu.co', 'first_name': 'Admin', 'last_name': 'User', 'password': 'admin123', 'rol': admin_rol},
     {'username': 'profesor1', 'email': 'profesor1@uis.edu.co', 'first_name': 'Profesor', 'last_name': 'Uno', 'password': 'prof123', 'rol': None},
     {'username': 'estudiante1', 'email': 'estudiante1@uis.edu.co', 'first_name': 'Estudiante', 'last_name': 'Uno', 'password': 'est123', 'rol': None},
     {'username': 'estudiante2', 'email': 'estudiante2@uis.edu.co', 'first_name': 'Estudiante', 'last_name': 'Dos', 'password': 'est123', 'rol': None},
+    {'username': 'conserje1', 'email': 'conserje1@uis.edu.co', 'first_name': 'Conserje', 'last_name': 'Uno', 'password': 'cons123', 'rol': conserje_rol},
 ]
 
 for user_data in users:
