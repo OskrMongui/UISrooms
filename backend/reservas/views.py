@@ -19,25 +19,29 @@ class ReservaViewSet(viewsets.ModelViewSet):
     tipo_responsable_map = {
         TipoEspacio.AULA: {"secretaria", "admin"},
         TipoEspacio.LABORATORIO: {"laboratorista", "admin"},
-        TipoEspacio.SALA: {"admin"},
+git config --global user.name "Tu Nombre"        TipoEspacio.SALA: {"admin"},
     }
 
     def get_queryset(self):
         queryset = (
-            Reserva.objects.all()
-            .select_related("espacio", "usuario")
+            Reserva.objects.select_related("espacio", "usuario")
             .order_by("fecha_inicio")
         )
-        espacio_id = self.request.query_params.get("espacio")
-        if espacio_id:
-            queryset = queryset.filter(espacio_id=espacio_id)
-        estado = self.request.query_params.get("estado")
-        if estado:
-            queryset = queryset.filter(estado=estado)
-
         user = getattr(self.request, "user", None)
         if not user or not getattr(user, "is_authenticated", False):
-            return queryset.none()
+            return Reserva.objects.none()
+
+        espacio_id = self.request.query_params.get("espacio")
+        estado = self.request.query_params.get("estado")
+
+        if espacio_id:
+            espacio_queryset = queryset.filter(espacio_id=espacio_id)
+            if estado:
+                espacio_queryset = espacio_queryset.filter(estado=estado)
+            return espacio_queryset
+
+        if estado:
+            queryset = queryset.filter(estado=estado)
 
         role = self._user_role(user)
         manager_roles = {"admin", "secretaria", "laboratorista"}
@@ -46,14 +50,14 @@ class ReservaViewSet(viewsets.ModelViewSet):
             if role == "admin":
                 return queryset
 
-            filters = Q(usuario=user)
+            filters = Q(usuario=user) | Q(creado_por=user)
             if role == "laboratorista":
                 filters |= Q(espacio__tipo__iexact=TipoEspacio.LABORATORIO)
             if role == "secretaria":
                 filters |= Q(espacio__tipo__iexact=TipoEspacio.AULA)
             return queryset.filter(filters)
 
-        return queryset.filter(usuario=user)
+        return queryset.filter(Q(usuario=user) | Q(creado_por=user))
 
     def perform_create(self, serializer):
         user = getattr(self.request, "user", None)
