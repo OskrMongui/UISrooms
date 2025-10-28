@@ -19,7 +19,7 @@ class ReservaViewSet(viewsets.ModelViewSet):
     tipo_responsable_map = {
         TipoEspacio.AULA: {"secretaria", "admin"},
         TipoEspacio.LABORATORIO: {"laboratorista", "admin"},
-git config --global user.name "Tu Nombre"        TipoEspacio.SALA: {"admin"},
+        TipoEspacio.SALA: {"admin"},
     }
 
     def get_queryset(self):
