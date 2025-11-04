@@ -91,6 +91,11 @@ class ReservaViewSet(viewsets.ModelViewSet):
         if not user or not getattr(user, "is_authenticated", False):
             return queryset.none()
 
+        # Allow read-only view of the schedule for everyone when explicitly requested.
+        modo = self.request.query_params.get("modo")
+        if modo and modo.lower() == "disponibilidad":
+            return queryset
+
         role = self._user_role(user)
         manager_roles = {"admin", "secretaria", "laboratorista"}
 
