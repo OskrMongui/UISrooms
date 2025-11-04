@@ -63,6 +63,11 @@ const Navbar = () => {
     []
   );
 
+  const userRole = useMemo(
+    () => (user?.rol?.nombre ? user.rol.nombre.toLowerCase() : ''),
+    [user]
+  );
+
   const navSections = useMemo(() => {
     const baseSections = [
       {
@@ -130,6 +135,56 @@ const Navbar = () => {
       },
     ];
 
+    if (userRole === 'conserje' || isAdmin()) {
+      baseSections.push({
+        id: 'conserjeria',
+        label: 'Conserjeria',
+        description: 'Gestiona aperturas programadas y control de accesos.',
+        items: [
+          {
+            to: '/aperturas',
+            label: 'Aperturas del dia',
+            description: 'Confirma aperturas de aulas segun la agenda diaria.',
+            requiresAuth: true,
+            activeMatch: '/aperturas',
+          },
+          {
+            to: '/aperturas/verificacion',
+            label: 'Aperturas realizadas',
+            description: 'Consulta aperturas completadas y gestiona cierres pendientes.',
+            requiresAuth: true,
+            activeMatch: '/aperturas/verificacion',
+          },
+        ],
+      });
+    }
+
+    if (isAdmin()) {
+      baseSections.push({
+        id: 'administracion',
+        label: 'Administracion',
+        description: 'Herramientas exclusivas para el equipo administrador.',
+        items: [
+          {
+            to: '/admin/spaces',
+            label: 'Gestion de espacios',
+            description: 'Crea, edita y organiza los espacios institucionales.',
+            requiresAuth: true,
+            requiresAdmin: true,
+            activeMatch: '/admin/spaces',
+          },
+          {
+            to: '/admin/reportes',
+            label: 'Reportes operativos',
+            description: 'Consulta aperturas, ausencias e incidencias registradas.',
+            requiresAuth: true,
+            requiresAdmin: true,
+            activeMatch: '/admin/reportes',
+          },
+        ],
+      });
+    }
+
     const sections = baseSections.map((section) => ({
       ...section,
       items: [...section.items],
@@ -155,7 +210,7 @@ const Navbar = () => {
 
 
     return sections;
-  }, [token]);
+  }, [token, userRole]);
 
   const userDisplayName = user
     ? [user.first_name, user.last_name].filter(Boolean).join(' ') ||
@@ -337,22 +392,6 @@ const Navbar = () => {
               .filter((link) => !link.requiresAuth || token)
               .map((link) => renderPrimaryLink(link))}
             {navSections.map((section) => renderSection(section))}
-            {token && isAdmin() && (
-              <li className="nav-item">
-                <NavLink
-                  to="/admin/spaces"
-                  className={({ isActive }) =>
-                    `nav-link px-lg-3${isActive ? ' active fw-semibold' : ''}`
-                  }
-                  onClick={() => {
-                    closeAllMenus();
-                    setIsNavCollapsed(true);
-                  }}
-                >
-                  Panel de administracion
-                </NavLink>
-              </li>
-            )}
           </ul>
           <ul className="navbar-nav align-items-lg-center gap-2 gap-lg-3 ms-lg-4">
             {token ? (

@@ -4,7 +4,7 @@ from datetime import date, timedelta
 from django.db import transaction
 
 from rest_framework import serializers
-from .models import Reserva, ReservaEstadoHistorial, EstadoReserva
+from .models import Reserva, ReservaEstadoHistorial, EstadoReserva, RegistroApertura
 
 SEMESTER_START = date(2025, 8, 4)
 SEMESTER_END = date(2025, 11, 28)
@@ -207,3 +207,71 @@ class ReservaEstadoHistorialSerializer(serializers.ModelSerializer):
         model = ReservaEstadoHistorial
         fields = ['id','reserva','estado_anterior','estado_nuevo','cambiado_por','comentario','fecha']
         read_only_fields = ['id','fecha']
+
+
+class RegistroAperturaSerializer(serializers.ModelSerializer):
+    espacio_nombre = serializers.CharField(source='espacio.nombre', read_only=True)
+    registrado_por_nombre = serializers.SerializerMethodField()
+    asistencia_estado_display = serializers.CharField(
+        source='get_asistencia_estado_display', read_only=True
+    )
+    cierre_motivo_display = serializers.CharField(
+        source='get_cierre_motivo_display', read_only=True
+    )
+
+    class Meta:
+        model = RegistroApertura
+        fields = [
+            'id',
+            'reserva',
+            'espacio',
+            'espacio_nombre',
+            'fecha_programada',
+            'registrado_en',
+            'registrado_por',
+            'registrado_por_nombre',
+            'completado',
+            'completado_en',
+            'asistencia_estado',
+            'asistencia_estado_display',
+            'asistencia_registrada_en',
+            'hora_llegada_real',
+            'ausencia_notificada',
+             'cierre_registrado',
+             'cierre_registrado_en',
+             'cierre_registrado_por',
+             'cierre_motivo',
+             'cierre_motivo_display',
+             'cierre_observaciones',
+            'observaciones',
+            'metadata',
+        ]
+        read_only_fields = [
+            'id',
+            'reserva',
+            'espacio',
+            'espacio_nombre',
+            'fecha_programada',
+            'registrado_en',
+            'registrado_por',
+            'registrado_por_nombre',
+            'completado',
+            'completado_en',
+            'asistencia_estado',
+            'asistencia_estado_display',
+            'asistencia_registrada_en',
+            'hora_llegada_real',
+            'ausencia_notificada',
+            'cierre_registrado',
+            'cierre_registrado_en',
+            'cierre_registrado_por',
+            'cierre_motivo',
+            'cierre_motivo_display',
+            'cierre_observaciones',
+        ]
+
+    def get_registrado_por_nombre(self, obj):
+        if not obj.registrado_por:
+            return None
+        full_name = f"{obj.registrado_por.first_name} {obj.registrado_por.last_name}".strip()
+        return full_name or obj.registrado_por.username

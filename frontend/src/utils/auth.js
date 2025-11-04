@@ -31,4 +31,5 @@ export const hasAnyRole = (roles = []) => {
 export const isAdmin = () => hasRole('admin');
 export const isSecretaria = () => hasRole('secretaria');
 export const isLaboratorista = () => hasRole('laboratorista');
+export const isConserje = () => hasRole('conserje');
 export const canApproveReservations = () => hasAnyRole(['admin', 'secretaria', 'laboratorista']);

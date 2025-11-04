@@ -54,6 +54,20 @@ ROLE_DEFINITIONS = [
         "password": "Laboratorista123!",
     },
     {
+        "name": "conserje",
+        "descripcion": "Gestiona aperturas diarias de aulas y control de llaves.",
+        "permisos": {"aperturas": "manage", "llaves": "manage"},
+        "user": {
+            "username": "conserje_demo",
+            "email": "conserje.demo@uisrooms.test",
+            "first_name": "Conserje",
+            "last_name": "Demo",
+            "is_staff": True,
+            "is_superuser": False,
+        },
+        "password": "Conserje123!",
+    },
+    {
         "name": "profesor",
         "descripcion": "Puede gestionar espacios y reservas propias.",
         "permisos": {"espacios": "manage", "reservas": "manage"},

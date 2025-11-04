@@ -18,7 +18,13 @@ from django.contrib import admin
 from rest_framework import routers
 from usuarios.views import UsuarioViewSet, RolViewSet
 from espacios.views import EspacioViewSet, DisponibilidadEspacioViewSet
-from reservas.views import ReservaViewSet, ReservaEstadoHistorialViewSet
+from reservas.views import (
+    ReservaViewSet,
+    ReservaEstadoHistorialViewSet,
+    ReporteAperturasAPIView,
+    ReporteAusenciasAPIView,
+    ReporteIncidenciasAPIView,
+)
 from llaves.views import LlaveViewSet
 from incidencias.views import IncidenciaViewSet, IncidenciaRespuestaViewSet
 from objetos.views import ObjetoPerdidoViewSet
@@ -47,9 +53,15 @@ router.register(r'objetos-perdidos', ObjetoPerdidoViewSet, basename='objetoperdi
 # Notificaciones
 router.register(r'notificaciones', NotificacionViewSet, basename='notificacion')
 
+reserva_aperturas_view = ReservaViewSet.as_view({'get': 'aperturas'})
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include(router.urls)),
+    path('api/reservas/aperturas/', reserva_aperturas_view, name='reserva-aperturas'),
+    path('api/reportes/aperturas/', ReporteAperturasAPIView.as_view(), name='reporte-aperturas'),
+    path('api/reportes/ausencias/', ReporteAusenciasAPIView.as_view(), name='reporte-ausencias'),
+    path('api/reportes/incidencias/', ReporteIncidenciasAPIView.as_view(), name='reporte-incidencias'),
     # Rutas de JWT:
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

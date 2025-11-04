@@ -89,4 +89,73 @@ class ReservaEstadoHistorial(models.Model):
         verbose_name_plural = "reservas_estado_historial"
 
 
+class EstadoAsistencia(models.TextChoices):
+    PRESENTE = 'presente', 'Presente'
+    TARDE = 'tarde', 'Llegada tarde'
+    AUSENTE = 'ausente', 'Ausente'
+
+
+class MotivoCierre(models.TextChoices):
+    FIN_CLASE = 'fin_clase', 'Fin de clase o reserva'
+    AUSENCIA = 'ausencia', 'Ausencia del profesor'
+    INSTRUCCION = 'instruccion', 'Instruccion administrativa'
+
+
+class RegistroApertura(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    reserva = models.ForeignKey(Reserva, on_delete=models.CASCADE, related_name='registros_apertura')
+    espacio = models.ForeignKey('espacios.Espacio', on_delete=models.CASCADE, related_name='registros_apertura')
+    registrado_por = models.ForeignKey(
+        'usuarios.Usuario',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='aperturas_registradas',
+    )
+    fecha_programada = models.DateTimeField()
+    registrado_en = models.DateTimeField(auto_now_add=True)
+    completado = models.BooleanField(default=False)
+    completado_en = models.DateTimeField(null=True, blank=True)
+    asistencia_estado = models.CharField(
+        max_length=20,
+        choices=EstadoAsistencia.choices,
+        blank=True,
+        null=True,
+    )
+    asistencia_registrada_en = models.DateTimeField(null=True, blank=True)
+    hora_llegada_real = models.DateTimeField(null=True, blank=True)
+    ausencia_notificada = models.BooleanField(default=False)
+    cierre_registrado = models.BooleanField(default=False)
+    cierre_registrado_en = models.DateTimeField(null=True, blank=True)
+    cierre_registrado_por = models.ForeignKey(
+        'usuarios.Usuario',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='cierres_registrados',
+    )
+    cierre_motivo = models.CharField(
+        max_length=30,
+        choices=MotivoCierre.choices,
+        blank=True,
+        null=True,
+    )
+    cierre_observaciones = models.TextField(blank=True, null=True)
+    observaciones = models.TextField(blank=True, null=True)
+    metadata = models.JSONField(default=dict, blank=True)
+
+    def __str__(self):
+        return f"Apertura {self.reserva_id} - {self.fecha_programada}"
+
+    class Meta:
+        verbose_name = "registro_apertura"
+        verbose_name_plural = "registros_apertura"
+        ordering = ["fecha_programada"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['reserva', 'fecha_programada'],
+                name='unico_registro_apertura_reserva_fecha',
+            )
+        ]
+
 
