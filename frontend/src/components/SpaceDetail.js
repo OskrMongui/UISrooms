@@ -106,7 +106,7 @@ const SpaceDetail = () => {
           api.get(`espacios/${id}/`),
           api.get(`espacios-disponibilidad/?espacio=${id}&bloqueo=false`),
           api.get(`espacios-disponibilidad/?espacio=${id}&bloqueo=true`),
-          api.get(`reservas/?espacio=${id}`),
+          api.get(`reservas/?espacio=${id}&modo=disponibilidad`),
         ]);
 
         setSpace(spaceRes.data);

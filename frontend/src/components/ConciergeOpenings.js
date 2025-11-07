@@ -3,6 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import { getUserFromToken } from '../utils/auth';
 
+const PALETTE = {
+  primary: '#67B93E',
+  primaryDark: '#7FBA00',
+  gold: '#C99500',
+  orange: '#E67015',
+  red: '#DA261D',
+  teal: '#00A8BF',
+  blue: '#0071B6',
+  purple: '#7A1A66',
+};
+
 const formatTime = (isoString) => {
   if (!isoString) return '--';
   const date = new Date(isoString);
@@ -39,15 +50,10 @@ const formatDuration = (milliseconds) => {
   return `${twoDigits(minutes)}m ${twoDigits(seconds)}s`;
 };
 
-const computeWindowState = (programDate, { startOffsetMinutes, endOffsetMinutes }, now) => {
-  if (!programDate || !now) {
+const computeWindowState = (start, end, now) => {
+  if (!start || !end || !now) {
     return { state: 'unknown' };
   }
-  const startMs = programDate.getTime() + startOffsetMinutes * 60 * 1000;
-  const endMs = programDate.getTime() + endOffsetMinutes * 60 * 1000;
-  const start = new Date(startMs);
-  const end = new Date(endMs);
-
   if (now < start) {
     return {
       state: 'before',
@@ -55,32 +61,25 @@ const computeWindowState = (programDate, { startOffsetMinutes, endOffsetMinutes 
       msUntilEnd: end.getTime() - now.getTime(),
     };
   }
-
   if (now > end) {
     return {
       state: 'after',
       msSinceEnd: now.getTime() - end.getTime(),
     };
   }
-
   return {
     state: 'active',
     msUntilEnd: end.getTime() - now.getTime(),
   };
 };
 
-const WINDOW_CONFIG = {
-  apertura: { startOffsetMinutes: -20, endOffsetMinutes: 30 },
-  asistencia: { startOffsetMinutes: 0, endOffsetMinutes: 30 },
-};
-
 const WEEK_DAYS = [
-  { label: 'L', full: 'Lunes', dayNumber: 1 },
+  { label: 'Lu', full: 'Lunes', dayNumber: 1 },
   { label: 'Ma', full: 'Martes', dayNumber: 2 },
-  { label: 'Mi', full: 'Miercoles', dayNumber: 3 },
-  { label: 'J', full: 'Jueves', dayNumber: 4 },
-  { label: 'V', full: 'Viernes', dayNumber: 5 },
-  { label: 'S', full: 'Sabado', dayNumber: 6 },
+  { label: 'Mi', full: 'Miércoles', dayNumber: 3 },
+  { label: 'Ju', full: 'Jueves', dayNumber: 4 },
+  { label: 'Vi', full: 'Viernes', dayNumber: 5 },
+  { label: 'Sa', full: 'Sábado', dayNumber: 6 },
   { label: 'Do', full: 'Domingo', dayNumber: 0 },
 ];
 
@@ -136,6 +135,7 @@ const ConciergeOpenings = ({ initialView = 'dashboard' }) => {
   const [closureTimestamp, setClosureTimestamp] = useState(null);
   const [closureReason, setClosureReason] = useState(DEFAULT_CLOSURE_REASON);
   const [closureNotes, setClosureNotes] = useState('');
+  const [hourFilter, setHourFilter] = useState('');
 
   const user = useMemo(() => getUserFromToken(), []);
   const initialDay = useMemo(() => new Date(), []);
@@ -146,29 +146,67 @@ const ConciergeOpenings = ({ initialView = 'dashboard' }) => {
     return () => clearInterval(interval);
   }, []);
 
-  const fechaIso = useMemo(() => initialDay.toISOString().slice(0, 10), [initialDay]);
   const [selectedDayIndex, setSelectedDayIndex] = useState(() => {
     const currentDayNumber = initialDay.getDay();
     const idx = WEEK_DAYS.findIndex((day) => day.dayNumber === currentDayNumber);
     return idx === -1 ? 0 : idx;
   });
+  const today = useMemo(() => new Date(), []);
+
+  const selectedDate = useMemo(() => {
+    const selectedDay = WEEK_DAYS[selectedDayIndex] || WEEK_DAYS[0];
+    const todayWeekday = today.getDay();
+    let diff = selectedDay.dayNumber - todayWeekday;
+    if (diff < 0) {
+      diff += 7;
+    }
+    const targetDate = new Date(today);
+    targetDate.setDate(today.getDate() + diff);
+    return targetDate;
+  }, [today, selectedDayIndex]);
+
+  const fechaIso = useMemo(() => selectedDate.toISOString().slice(0, 10), [selectedDate]);
 
   const getWindowInfo = (opening) => {
     const programDate = getProgramDate(opening);
+    const programEnd = toValidDate(opening?.hora_programada_fin);
+    const registro = opening?.registro || {};
+    const aperturaRegistradaEn =
+      toValidDate(opening?.apertura_registrada_en) ||
+      toValidDate(registro.completado_en) ||
+      null;
+
+    const aperturaStart = programDate
+      ? new Date(programDate.getTime() - 20 * 60 * 1000)
+      : null;
+    const aperturaEnd = programDate
+      ? new Date(programDate.getTime() + 5 * 60 * 1000)
+      : null;
+
+    const asistenciaStart = aperturaRegistradaEn || programDate;
+    const asistenciaEnd = programDate
+      ? new Date(programDate.getTime() + 30 * 60 * 1000)
+      : null;
+
+    const cierreStart = aperturaRegistradaEn || programDate;
+    const cierreEnd = programEnd
+      ? new Date(programEnd.getTime() + 5 * 60 * 1000)
+      : programDate
+      ? new Date(programDate.getTime() + 65 * 60 * 1000)
+      : null;
+
     return {
       programDate,
-      apertura: computeWindowState(programDate, WINDOW_CONFIG.apertura, currentTime),
-      asistencia: computeWindowState(programDate, WINDOW_CONFIG.asistencia, currentTime),
+      apertura: computeWindowState(aperturaStart, aperturaEnd, currentTime),
+      asistencia: computeWindowState(asistenciaStart, asistenciaEnd, currentTime),
+      cierre: computeWindowState(cierreStart, cierreEnd, currentTime),
     };
   };
 
-  const renderWindowMessage = (windowState, tipo) => {
+  const renderWindowMessage = (windowState, label) => {
     if (!windowState || windowState.state === 'unknown') {
       return 'Horario no disponible.';
     }
-    const label = tipo === 'apertura'
-      ? 'La apertura del aula'
-      : 'La verificacion de asistencia';
     if (windowState.state === 'before') {
       return `${label} se habilita en ${formatDuration(windowState.msUntilStart)}.`;
     }
@@ -214,11 +252,18 @@ const ConciergeOpenings = ({ initialView = 'dashboard' }) => {
   const isVerificationMode = initialView === 'verificacion';
 
   const filteredOpenings = useMemo(() => {
+    const hourNumber = hourFilter.trim() === '' ? null : Number(hourFilter);
+    const validHour = hourNumber != null && Number.isFinite(hourNumber);
     return visibleOpenings.filter((opening) => {
       const { aperturaRegistrada } = getOpeningStatus(opening);
-      return isVerificationMode ? aperturaRegistrada : !aperturaRegistrada;
+      const matchesState = isVerificationMode ? aperturaRegistrada : !aperturaRegistrada;
+      if (!matchesState) return false;
+      if (!validHour) return true;
+      const programDate = getProgramDate(opening);
+      if (!programDate) return false;
+      return programDate.getHours() === hourNumber;
     });
-  }, [visibleOpenings, isVerificationMode]);
+  }, [visibleOpenings, isVerificationMode, hourFilter]);
 
   const hasOpenings = useMemo(() => {
     return openingsByDay.some((items) =>
@@ -281,6 +326,9 @@ const ConciergeOpenings = ({ initialView = 'dashboard' }) => {
     : 'Gestiona aperturas, asistencia y cierres de aula desde este panel.';
 
   const openRegisterModal = (opening) => {
+    if (!opening || !opening.reserva_id) {
+      return;
+    }
     setSelectedOpening(opening);
     setModalTimestamp(new Date());
     setError('');
@@ -294,6 +342,9 @@ const ConciergeOpenings = ({ initialView = 'dashboard' }) => {
   };
 
   const openAttendanceModal = (opening, mode) => {
+    if (!opening || !opening.reserva_id) {
+      return;
+    }
     setAttendanceModal({ opening, mode });
     setAttendanceTimestamp(new Date());
     setLateTime('');
@@ -309,6 +360,9 @@ const ConciergeOpenings = ({ initialView = 'dashboard' }) => {
   };
 
 const openClosureModal = (opening) => {
+  if (!opening || !opening.reserva_id) {
+    return;
+  }
   setClosureModal(opening);
   setClosureTimestamp(new Date());
   setClosureReason(DEFAULT_CLOSURE_REASON);
@@ -326,7 +380,7 @@ const closeClosureModal = () => {
 };
 
 const handleRegister = async () => {
-  if (!selectedOpening) return;
+  if (!selectedOpening || !selectedOpening.reserva_id) return;
   const reservaId = selectedOpening.reserva_id;
   setActionLoadingId(reservaId);
   setError('');
@@ -361,7 +415,7 @@ const handleRegister = async () => {
 };
 
 const handleAttendanceSubmit = async () => {
-  if (!attendanceModal) return;
+  if (!attendanceModal || !attendanceModal.opening?.reserva_id) return;
   const { opening, mode } = attendanceModal;
   const reservaId = opening.reserva_id;
   setActionLoadingId(reservaId);
@@ -417,7 +471,7 @@ const handleAttendanceSubmit = async () => {
 };
 
 const handleClosureSubmit = async () => {
-  if (!closureModal) return;
+  if (!closureModal || !closureModal.reserva_id) return;
   const reservaId = closureModal.reserva_id;
   setActionLoadingId(reservaId);
   setError('');
@@ -529,8 +583,10 @@ const renderOpeningCard = (opening) => {
   const windowInfo = getWindowInfo(opening);
   const aperturaWindow = windowInfo.apertura;
   const asistenciaWindow = windowInfo.asistencia;
+  const cierreWindow = windowInfo.cierre;
   const canRegisterOpening = aperturaWindow && aperturaWindow.state === 'active';
   const canRegisterAttendance = asistenciaWindow && asistenciaWindow.state === 'active';
+  const canRegisterClosure = cierreWindow && cierreWindow.state === 'active';
   const programDate = windowInfo.programDate || getProgramDate(opening);
   const horaProgramada = programDate
     ? programDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -541,11 +597,30 @@ const renderOpeningCard = (opening) => {
 
   const aulaLabel = opening.aula || opening.espacio_nombre || 'Espacio sin nombre';
   const tipoUsoLabel = opening.tipo_uso || 'Reserva especial';
-  const solicitanteLabel = opening.profesor_solicitante || 'No asignado';
-  const thumbLabel = aulaLabel ? aulaLabel.slice(0, 2).toUpperCase() : 'A';
+  const origen = opening.origen || (opening.reserva_id ? 'reserva' : 'horario');
+  const isReadOnly = opening.permite_registro === false || !opening.reserva_id;
+  const solicitanteLabel =
+    opening.profesor_solicitante || (isReadOnly ? 'Horario institucional' : 'No asignado');
+  const espacioCodigo = opening?.espacio_codigo || opening?.espacio?.codigo || 'A';
+  const thumbLabel = String(espacioCodigo).slice(0, 3).toUpperCase();
+  const badgeStyles = origen === 'horario'
+    ? { backgroundColor: PALETTE.teal, color: '#fff' }
+    : { backgroundColor: PALETTE.gold, color: '#fff' };
+  const badgeLabel = origen === 'horario' ? 'Horario fijo' : 'Reserva';
+  const stage = opening.estado_etapa || 'inicial';
+  const stageConfig = {
+    inicial: { label: 'Aula cerrada', style: { backgroundColor: '#b5b5b5', color: '#fff' } },
+    en_proceso: { label: 'Aula abierta', style: { backgroundColor: PALETTE.primaryDark, color: '#fff' } },
+    final: { label: 'Aula cerrada', style: { backgroundColor: PALETTE.red, color: '#fff' } },
+  };
+  const stageBadge = stageConfig[stage] || stageConfig.inicial;
+  const cardKey =
+    opening.uid ||
+    opening.reserva_id ||
+    `${origen}-${opening.hora_programada || ''}-${aulaLabel}`;
 
   return (
-    <div key={opening.reserva_id} className="col">
+    <div key={cardKey} className="col">
       <div className="card border-0 shadow-sm h-100">
         <div className="card-body d-flex flex-column gap-3">
           <div className="d-flex gap-3 align-items-start">
@@ -555,7 +630,7 @@ const renderOpeningCard = (opening) => {
                 width: '4.5rem',
                 height: '4.5rem',
                 borderRadius: '1.5rem',
-                background: 'linear-gradient(145deg, #198754, #0d6efd)',
+                background: `linear-gradient(145deg, ${PALETTE.primary}, ${PALETTE.teal})`,
                 color: '#fff',
                 display: 'flex',
                 alignItems: 'center',
@@ -571,6 +646,8 @@ const renderOpeningCard = (opening) => {
               <div className="d-flex align-items-center gap-2 text-muted small mb-1">
                 <span className="fw-semibold text-dark">{horaProgramada}</span>
                 <span className="text-muted">· {diaProgramado}</span>
+                <span className="badge" style={{ ...badgeStyles, fontSize: '0.75rem' }}>{badgeLabel}</span>
+                <span className="badge" style={{ ...stageBadge.style, fontSize: '0.75rem' }}>{stageBadge.label}</span>
               </div>
               <h3 className="h5 mb-1 text-dark">{tipoUsoLabel}</h3>
               <div className="text-muted small mb-2">
@@ -582,21 +659,20 @@ const renderOpeningCard = (opening) => {
                   <div>
                     <strong>Materia:</strong> {opening.codigo_materia || 'N/D'} · <strong>Grupo:</strong> {opening.codigo_grupo || 'N/D'}
                   </div>
-                ) : (
+                ) : opening.reserva_id ? (
                   <div>
                     <strong>Reserva:</strong> {opening.reserva_id}
                   </div>
-                )}
-                {opening.estado_inicial && (
-                  <div>
-                    <strong>Estado inicial:</strong> {opening.estado_inicial}
-                  </div>
-                )}
+                ) : null}
               </div>
             </div>
           </div>
 
-          {aperturaRegistrada ? (
+          {isReadOnly ? (
+            <div className="alert alert-info small mb-0">
+              Este horario proviene del cronograma base y se muestra solo para consulta.
+            </div>
+          ) : aperturaRegistrada ? (
             <div className="alert alert-success small mb-0">
               Apertura registrada por <strong>{registro?.registrado_por_nombre || 'conserjeria'}</strong> a las{' '}
               {formatTime(registro?.completado_en || registro?.registrado_en)}.
@@ -609,18 +685,24 @@ const renderOpeningCard = (opening) => {
 
           {!aperturaRegistrada && (
             <p className="small text-muted mb-0">
-              {renderWindowMessage(aperturaWindow, 'apertura')}
+              {renderWindowMessage(aperturaWindow, 'La apertura del aula')}
             </p>
           )}
 
-          <div className="pt-2 mt-auto">
-            {!aperturaRegistrada ? (
-              <div className="d-flex justify-content-end">
-                <button
-                  type="button"
-                  className="btn btn-success"
-                  disabled={actionLoadingId === opening.reserva_id || !canRegisterOpening}
-                  title={!canRegisterOpening ? 'Disponible 20 minutos antes y hasta 30 minutos despues del horario programado.' : undefined}
+          {!isReadOnly && (
+            <div className="pt-2">
+              {!aperturaRegistrada ? (
+                <div className="d-flex justify-content-end">
+                  <button
+                    type="button"
+                    className="btn"
+                    style={{
+                      backgroundColor: PALETTE.primary,
+                      color: '#fff',
+                      borderColor: PALETTE.primary,
+                    }}
+                    disabled={actionLoadingId === opening.reserva_id || !canRegisterOpening}
+                  title={!canRegisterOpening ? 'Disponible 20 minutos antes y hasta 5 minutos despues del inicio programado.' : undefined}
                   onClick={() => openRegisterModal(opening)}
                 >
                   {actionLoadingId === opening.reserva_id
@@ -628,20 +710,24 @@ const renderOpeningCard = (opening) => {
                     : 'Registrar apertura'}
                 </button>
               </div>
-            ) : (
-              <>
-                <div className="border-top pt-3">
-                  <h6 className="text-success text-uppercase small mb-2">Verificacion de presencia</h6>
-                  {renderAttendanceStatus(opening)}
-                  {!asistenciaRegistrada && (
+              ) : (
+                <>
+                  <div className="border-top pt-3">
+                    <h6 className="text-success text-uppercase small mb-2">Verificacion de presencia</h6>
+                    {renderAttendanceStatus(opening)}
+                    {!asistenciaRegistrada && (
                     <>
                       <p className="small text-muted mb-2">
-                        {renderWindowMessage(asistenciaWindow, 'asistencia')}
+                        {renderWindowMessage(asistenciaWindow, 'La verificacion de asistencia')}
                       </p>
                       <div className="d-flex flex-wrap gap-2">
                         <button
                           type="button"
-                          className="btn btn-outline-success btn-sm fw-semibold"
+                          className="btn btn-sm fw-semibold"
+                          style={{
+                            border: `1px solid ${PALETTE.primary}`,
+                            color: PALETTE.primary,
+                          }}
                           onClick={() => openAttendanceModal(opening, 'presente')}
                           disabled={actionLoadingId === opening.reserva_id || !canRegisterAttendance}
                         >
@@ -649,7 +735,11 @@ const renderOpeningCard = (opening) => {
                         </button>
                         <button
                           type="button"
-                          className="btn btn-outline-warning btn-sm fw-semibold"
+                          className="btn btn-sm fw-semibold"
+                          style={{
+                            border: `1px solid ${PALETTE.orange}`,
+                            color: PALETTE.orange,
+                          }}
                           onClick={() => openAttendanceModal(opening, 'tarde')}
                           disabled={actionLoadingId === opening.reserva_id || !canRegisterAttendance}
                         >
@@ -657,7 +747,11 @@ const renderOpeningCard = (opening) => {
                         </button>
                         <button
                           type="button"
-                          className="btn btn-outline-danger btn-sm fw-semibold"
+                          className="btn btn-sm fw-semibold"
+                          style={{
+                            border: `1px solid ${PALETTE.red}`,
+                            color: PALETTE.red,
+                          }}
                           onClick={() => openAttendanceModal(opening, 'ausente')}
                           disabled={actionLoadingId === opening.reserva_id || !canRegisterAttendance}
                         >
@@ -672,19 +766,36 @@ const renderOpeningCard = (opening) => {
                   <h6 className="text-success text-uppercase small mb-2">Cierre del aula</h6>
                   {renderClosureStatus(opening)}
                   {!cierreRegistrado && (
-                    <button
-                      type="button"
-                      className="btn btn-outline-secondary btn-sm fw-semibold"
-                      onClick={() => openClosureModal(opening)}
-                      disabled={actionLoadingId === opening.reserva_id}
-                    >
-                      Registrar cierre
-                    </button>
+                    <>
+                      <p className="small text-muted mb-2">
+                        {renderWindowMessage(cierreWindow, 'El cierre del aula')}
+                      </p>
+                      <button
+                        type="button"
+                        className="btn btn-sm fw-semibold"
+                        style={{
+                          border: `1px solid ${PALETTE.blue}`,
+                          color: PALETTE.blue,
+                        }}
+                        onClick={() => openClosureModal(opening)}
+                        disabled={
+                          actionLoadingId === opening.reserva_id || !canRegisterClosure
+                        }
+                        title={
+                          !canRegisterClosure
+                            ? 'Disponible desde la apertura y hasta 5 minutos despues de la hora de fin.'
+                            : undefined
+                        }
+                      >
+                        Registrar cierre
+                      </button>
+                    </>
                   )}
-                </div>
-              </>
-            )}
-          </div>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -692,38 +803,86 @@ const renderOpeningCard = (opening) => {
 };
 
 const renderDaySelector = () => (
-  <div className="d-flex justify-content-center flex-wrap gap-2 mb-4">
-    {WEEK_DAYS.map((day, index) => {
-      const isActive = index === selectedDayIndex;
-      return (
-        <button
-          key={day.dayNumber}
-          type="button"
-          className={`btn btn-sm rounded-circle ${isActive ? 'text-white' : 'text-muted'}`}
-          style={{
-            width: '3rem',
-            height: '3rem',
-            borderRadius: '50%',
-            border: 'none',
-            fontWeight: isActive ? 600 : 500,
-            backgroundColor: isActive ? '#198754' : '#f2f5f7',
-          }}
-          onClick={() => setSelectedDayIndex(index)}
-        >
-          {day.label}
-        </button>
-      );
-    })}
-  </div>
+  <>
+    <div className="d-flex justify-content-center flex-wrap gap-2 mb-3">
+      {WEEK_DAYS.map((day, index) => {
+        const isActive = index === selectedDayIndex;
+        return (
+          <button
+            key={day.dayNumber}
+            type="button"
+            className={`btn btn-sm rounded-circle ${isActive ? 'text-white' : 'text-muted'}`}
+            style={{
+              width: '3.2rem',
+              height: '3.2rem',
+              borderRadius: '50%',
+              border: `2px solid ${isActive ? PALETTE.primary : '#e7e7e7'}`,
+              fontWeight: isActive ? 600 : 500,
+              backgroundColor: isActive ? PALETTE.primary : '#f5f8f5',
+            }}
+            onClick={() => setSelectedDayIndex(index)}
+          >
+            {day.label}
+          </button>
+        );
+      })}
+    </div>
+    <div className="card border-0 shadow-sm mb-4 mx-auto" style={{ maxWidth: '780px' }}>
+      <div className="card-body">
+        <div className="d-flex flex-column flex-lg-row align-items-center gap-3">
+          <div className="flex-grow-1 w-100">
+            <label className="form-label text-muted text-uppercase small mb-1">Filtrar por hora</label>
+            <div className="input-group input-group-sm">
+              <input
+                type="number"
+                min="0"
+                max="23"
+                className="form-control"
+                placeholder="Ej. 8"
+                value={hourFilter}
+                onChange={(e) => setHourFilter(e.target.value)}
+              />
+              <button
+                type="button"
+                className="btn"
+                style={{ backgroundColor: PALETTE.teal, color: '#fff' }}
+                onClick={() => setHourFilter('')}
+              >
+                Limpiar
+              </button>
+            </div>
+          </div>
+          <div className="d-flex flex-wrap gap-2 justify-content-center w-100">
+            {[6, 7, 8, 9, 10, 14, 16].map((hour) => (
+              <button
+                key={hour}
+                type="button"
+                className="btn btn-sm"
+                style={{
+                  backgroundColor:
+                    hourFilter == hour ? PALETTE.orange : 'transparent',
+                  color: hourFilter == hour ? '#fff' : '#555',
+                  border: `1px solid ${hourFilter == hour ? PALETTE.orange : '#d7d7d7'}`,
+                }}
+                onClick={() => setHourFilter(String(hour))}
+              >
+                {hour}:00
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  </>
 );
 
 const selectedDayLabel = selectedDay.full;
-const selectedDayDateLabel = selectedDayDate
-  ? selectedDayDate.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })
+const selectedDayDateLabel = selectedDate
+  ? selectedDate.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })
   : null;
 
 return (
-  <div className="container py-3">
+  <div className="container py-3" style={{ maxWidth: '900px' }}>
     <div className="text-center mb-4">
       <h1 className="h3 fw-semibold mb-2">Horario</h1>
       <p className="text-muted mb-0">{greeting}. {helperDescription}</p>
@@ -771,9 +930,11 @@ return (
             >
               📅
             </div>
-            <h3 className="h5 mb-2">Sin aperturas programadas</h3>
+            <h3 className="h5 mb-2">Sin resultados</h3>
             <p className="text-muted mb-0">
-              {isVerificationMode
+              {hourFilter
+                ? 'No hay coincidencias para la hora filtrada.'
+                : isVerificationMode
                 ? 'No hay aperturas registradas para el dia seleccionado.'
                 : 'No hay aperturas pendientes para el dia seleccionado.'}
             </p>

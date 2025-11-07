@@ -34,7 +34,7 @@ INSTALLED_APPS = [
     # Tus apps
     'usuarios',
     'espacios',
-    'reservas',
+    'reservas.apps.ReservasConfig',
     'llaves',
     'incidencias',
     'objetos',

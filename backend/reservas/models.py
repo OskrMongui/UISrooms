@@ -16,7 +16,9 @@ class ReservaManager(models.Manager):
     def solapa(self, espacio, inicio, fin, estados=None):
         estados = estados or [EstadoReserva.APROBADO]
         periodo = (inicio, fin)
-        return self.get_queryset().filter(
+        return self.get_queryset().exclude(
+            metadata__es_horario=True
+        ).filter(
             espacio=espacio,
             estado__in=estados
         ).filter(periodo__overlap=periodo)
@@ -62,16 +64,6 @@ class Reserva(models.Model):
             models.Index(fields=['espacio', 'fecha_inicio', 'fecha_fin']),
             models.Index(fields=['estado']),
             GistIndex(fields=['periodo']),
-        ]
-        constraints = [
-            ExclusionConstraint(
-                name='reservas_no_solapamiento',
-                expressions=[
-                    (F('espacio'), '='),
-                    (F('periodo'), '&&'),
-                ],
-                condition=Q(estado=EstadoReserva.APROBADO)
-            )
         ]
 
 

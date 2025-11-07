@@ -12,7 +12,7 @@ from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnl
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from espacios.models import TipoEspacio
+from espacios.models import TipoEspacio, DisponibilidadEspacio
 from notificaciones.models import Notificacion, TipoNotificacion
 from incidencias.models import Incidencia
 from usuarios.models import Usuario
@@ -65,6 +65,7 @@ def _format_duration(delta):
 class ReservaViewSet(viewsets.ModelViewSet):
     serializer_class = ReservaSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
+    CLASS_EVENT_PREFIX = "[CLASE]"
 
     # Roles responsables por tipo de espacio. admin siempre puede gestionar.
     tipo_responsable_map = {
@@ -377,6 +378,218 @@ class ReservaViewSet(viewsets.ModelViewSet):
             "es_clase": tipo_uso == "Clase programada",
         }
 
+    def _estado_operativo(self, reserva, registro, ahora):
+        tz = timezone.get_current_timezone()
+        hora_inicio = reserva.fecha_inicio
+        hora_fin = reserva.fecha_fin
+
+        if hora_inicio and timezone.is_naive(hora_inicio):
+            hora_inicio = timezone.make_aware(hora_inicio, tz)
+        if hora_fin and timezone.is_naive(hora_fin):
+            hora_fin = timezone.make_aware(hora_fin, tz)
+
+        if not registro or not registro.completado:
+            return "inicial", "Aula cerrada"
+
+        if registro.cierre_registrado:
+            return "final", "Aula cerrada"
+
+        return "en_proceso", "Aula abierta"
+
+    def _include_horarios_param(self, request):
+        raw = request.query_params.get("incluir_horarios")
+        if not raw:
+            return False
+        return raw.strip().lower() in {"1", "true", "si", "yes"}
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        if not self._include_horarios_param(request):
+            queryset = queryset.exclude(
+                metadata__es_horario=True,
+                metadata__horario_id__isnull=False,
+            )
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+    def _parse_class_observation(self, observaciones):
+        if not observaciones:
+            return None, None
+        normalized = observaciones.strip()
+        prefix = self.CLASS_EVENT_PREFIX.lower()
+        if normalized.lower().startswith(prefix):
+            normalized = normalized[len(self.CLASS_EVENT_PREFIX) :].strip()
+        if not normalized:
+            return None, None
+        codigo = None
+        grupo = None
+        for chunk in normalized.split("|"):
+            part = chunk.strip()
+            if not part:
+                continue
+            lowered = part.lower()
+            if lowered.startswith("grupo"):
+                grupo = part.split(" ", 1)[-1].strip() or None
+            elif codigo is None:
+                codigo = part
+        return codigo, grupo
+
+    def _ensure_horario_reserva(self, bloque, fecha_objetivo, hora_inicio, hora_fin, codigo, grupo):
+        horario_id = str(bloque.id)
+        fecha_clave = fecha_objetivo.isoformat()
+        metadata_filter = {
+            "metadata__horario_id": horario_id,
+            "metadata__horario_fecha": fecha_clave,
+        }
+
+        reserva = (
+            Reserva.objects.filter(**metadata_filter)
+            .select_related("espacio", "usuario")
+            .prefetch_related("registros_apertura__registrado_por")
+            .first()
+        )
+
+        metadata_base = {
+            "horario_id": horario_id,
+            "horario_fecha": fecha_clave,
+            "horario_observaciones": bloque.observaciones,
+            "tipo_uso": "clase",
+            "codigo_materia": codigo,
+            "codigo_grupo": grupo,
+            "es_horario": True,
+            "espacio_codigo": getattr(bloque.espacio, "codigo", None),
+        }
+
+        if reserva:
+            needs_save = False
+            if reserva.fecha_inicio != hora_inicio or reserva.fecha_fin != hora_fin:
+                reserva.fecha_inicio = hora_inicio
+                reserva.fecha_fin = hora_fin
+                reserva.periodo = (hora_inicio, hora_fin)
+                needs_save = True
+            if reserva.espacio_id != bloque.espacio_id:
+                reserva.espacio = bloque.espacio
+                needs_save = True
+            merged_metadata = reserva.metadata or {}
+            merged_metadata.update(metadata_base)
+            if merged_metadata != reserva.metadata:
+                reserva.metadata = merged_metadata
+                needs_save = True
+            if needs_save:
+                reserva.save()
+            return reserva
+
+        reserva = Reserva.objects.create(
+            espacio=bloque.espacio,
+            usuario=None,
+            fecha_inicio=hora_inicio,
+            fecha_fin=hora_fin,
+            estado=EstadoReserva.APROBADO,
+            motivo="Clase programada (horario)",
+            recurrente=True,
+            requiere_llaves=False,
+            metadata=metadata_base,
+        )
+        return reserva
+
+    def _schedule_entries_for_date(self, fecha_objetivo, reservas):
+        if not fecha_objetivo:
+            return []
+
+        reservas_por_espacio = {}
+        for reserva in reservas:
+            if (
+                reserva.espacio_id
+                and reserva.fecha_inicio
+                and reserva.fecha_fin
+            ):
+                reservas_por_espacio.setdefault(reserva.espacio_id, []).append(
+                    (reserva.fecha_inicio, reserva.fecha_fin)
+                )
+
+        dia_semana = fecha_objetivo.weekday()  # 0=Lunes
+        dia_filters = Q(recurrente=True, dia_semana=dia_semana)
+        dia_filters |= Q(
+            recurrente=False,
+            fecha_inicio__lte=fecha_objetivo,
+            fecha_fin__gte=fecha_objetivo,
+        )
+        dia_filters |= Q(
+            recurrente=False,
+            fecha_inicio__lte=fecha_objetivo,
+            fecha_fin__isnull=True,
+        )
+        dia_filters |= Q(
+            recurrente=False,
+            fecha_inicio__isnull=True,
+            fecha_fin__gte=fecha_objetivo,
+        )
+        dia_filters |= Q(
+            recurrente=False,
+            fecha_inicio__isnull=True,
+            fecha_fin__isnull=True,
+        )
+
+        horarios = (
+            DisponibilidadEspacio.objects.filter(
+                es_bloqueo=True,
+                observaciones__istartswith=self.CLASS_EVENT_PREFIX,
+            )
+            .filter(dia_filters)
+            .select_related("espacio")
+            .order_by("hora_inicio")
+        )
+
+        nuevas_reservas = []
+        tz = timezone.get_current_timezone()
+
+        for bloque in horarios:
+            if not bloque.espacio or not bloque.hora_inicio:
+                continue
+
+            hora_inicio = datetime.combine(fecha_objetivo, bloque.hora_inicio)
+            hora_fin_base = bloque.hora_fin or bloque.hora_inicio
+            hora_fin = datetime.combine(fecha_objetivo, hora_fin_base)
+            if hora_fin <= hora_inicio:
+                hora_fin = hora_inicio + timedelta(hours=1)
+
+            if timezone.is_naive(hora_inicio):
+                hora_inicio = timezone.make_aware(hora_inicio, tz)
+            if timezone.is_naive(hora_fin):
+                hora_fin = timezone.make_aware(hora_fin, tz)
+
+            reservas_espacio = reservas_por_espacio.get(bloque.espacio_id, [])
+            solapa_reserva = any(
+                inicio < hora_fin and hora_inicio < fin for inicio, fin in reservas_espacio
+            )
+            if solapa_reserva:
+                continue
+
+            codigo, grupo = self._parse_class_observation(bloque.observaciones)
+            reserva = self._ensure_horario_reserva(
+                bloque,
+                fecha_objetivo,
+                hora_inicio,
+                hora_fin,
+                codigo,
+                grupo,
+            )
+            if not reserva:
+                continue
+
+            reservas_por_espacio.setdefault(bloque.espacio_id, []).append(
+                (reserva.fecha_inicio, reserva.fecha_fin)
+            )
+            nuevas_reservas.append(reserva)
+
+        return nuevas_reservas
+
     @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
     def aprobar(self, request, pk=None):
         reserva = self.get_object()
@@ -459,7 +672,7 @@ class ReservaViewSet(viewsets.ModelViewSet):
         else:
             fecha_objetivo = timezone.localdate()
 
-        reservas = (
+        reservas_qs = (
             Reserva.objects.filter(
                 estado=EstadoReserva.APROBADO,
                 fecha_inicio__date=fecha_objetivo,
@@ -468,21 +681,34 @@ class ReservaViewSet(viewsets.ModelViewSet):
             .prefetch_related("registros_apertura__registrado_por")
             .order_by("fecha_inicio")
         )
+        reservas = list(reservas_qs)
+        reservas.extend(self._schedule_entries_for_date(fecha_objetivo, reservas))
 
+        ahora = timezone.now()
         resultados = []
         for reserva in reservas:
             registro = self._ensure_registro_apertura(reserva)
             if registro and registro.fecha_programada.date() != fecha_objetivo:
                 registro = None
             detalles = self._detalles_para_apertura(reserva)
+            metadata = reserva.metadata or {}
+            is_horario = bool(metadata.get("es_horario") or metadata.get("horario_id"))
+            espacio_codigo = None
+            if reserva.espacio and getattr(reserva.espacio, "codigo", None):
+                espacio_codigo = reserva.espacio.codigo
+            elif metadata.get("espacio_codigo"):
+                espacio_codigo = metadata.get("espacio_codigo")
+
             if reserva.usuario:
                 nombre = f"{reserva.usuario.first_name} {reserva.usuario.last_name}".strip()
                 solicitante = nombre or reserva.usuario.username
+            elif is_horario:
+                solicitante = "Horario institucional"
             else:
                 solicitante = None
 
-            estado_inicial = (
-                "Aula abierta, esperando llegada del profesor o responsable."
+            etapa_estado, texto_estado = self._estado_operativo(
+                reserva, registro, ahora
             )
 
             apertura_registrada = bool(registro and registro.completado)
@@ -534,11 +760,16 @@ class ReservaViewSet(viewsets.ModelViewSet):
 
             resultados.append(
                 {
+                    "uid": f"reserva-{reserva.id}",
                     "reserva_id": str(reserva.id),
                     "espacio_id": str(reserva.espacio_id),
                     "aula": reserva.espacio.nombre if reserva.espacio else None,
+                    "espacio_codigo": espacio_codigo,
                     "hora_programada": reserva.fecha_inicio.isoformat()
                     if reserva.fecha_inicio
+                    else None,
+                    "hora_programada_fin": reserva.fecha_fin.isoformat()
+                    if reserva.fecha_fin
                     else None,
                     "profesor_solicitante": solicitante,
                     "tipo_uso": detalles["tipo_uso"],
@@ -546,7 +777,9 @@ class ReservaViewSet(viewsets.ModelViewSet):
                     "codigo_materia": detalles["codigo_materia"],
                     "codigo_grupo": detalles["codigo_grupo"],
                     "es_clase": detalles["es_clase"],
-                    "estado_inicial": estado_inicial,
+                    "estado_inicial": texto_estado,
+                    "estado_texto": texto_estado,
+                    "estado_etapa": etapa_estado,
                     "apertura_registrada": apertura_registrada,
                     "apertura_registrada_en": apertura_registrada_en,
                     "asistencia_estado": asistencia_estado,
@@ -561,8 +794,18 @@ class ReservaViewSet(viewsets.ModelViewSet):
                     "cierre_observaciones": cierre_observaciones,
                     "estado_aula": estado_aula,
                     "registro": registro_data,
+                    "origen": "horario" if is_horario else "reserva",
+                    "permite_registro": True,
+                    "solo_consulta": False,
+                    "duracion_minutos": int(
+                        (reserva.fecha_fin - reserva.fecha_inicio).total_seconds() // 60
+                    )
+                    if reserva.fecha_fin and reserva.fecha_inicio
+                    else None,
                 }
             )
+
+        resultados.sort(key=lambda item: item.get("hora_programada") or "")
 
         estado_filtro = request.query_params.get("estado")
         if estado_filtro:
@@ -655,7 +898,7 @@ class ReservaViewSet(viewsets.ModelViewSet):
 
         now = timezone.now()
         ventana_inicio = hora_programada - timedelta(minutes=20)
-        ventana_fin = hora_programada + timedelta(minutes=30)
+        ventana_fin = hora_programada + timedelta(minutes=5)
         if now < ventana_inicio:
             espera = _format_duration(ventana_inicio - now)
             return Response(
@@ -824,7 +1067,12 @@ class ReservaViewSet(viewsets.ModelViewSet):
             )
 
         now = timezone.now()
-        ventana_inicio = hora_programada
+        apertura_real = registro.completado_en or registro.registrado_en
+        if apertura_real and timezone.is_naive(apertura_real):
+            apertura_real = timezone.make_aware(
+                apertura_real, timezone.get_current_timezone()
+            )
+        ventana_inicio = apertura_real or hora_programada
         ventana_fin = hora_programada + timedelta(minutes=30)
         if now < ventana_inicio:
             espera = _format_duration(ventana_inicio - now)
@@ -1016,6 +1264,49 @@ class ReservaViewSet(viewsets.ModelViewSet):
             hora_cierre = parsed
 
         observaciones = request.data.get("observaciones") or ""
+
+        hora_inicio_cierre = (
+            registro.completado_en
+            or registro.fecha_programada
+            or reserva.fecha_inicio
+        )
+        if hora_inicio_cierre and timezone.is_naive(hora_inicio_cierre):
+            hora_inicio_cierre = timezone.make_aware(
+                hora_inicio_cierre, timezone.get_current_timezone()
+            )
+        hora_fin_referencia = reserva.fecha_fin or registro.fecha_programada or reserva.fecha_inicio
+        if hora_fin_referencia and timezone.is_naive(hora_fin_referencia):
+            hora_fin_referencia = timezone.make_aware(
+                hora_fin_referencia, timezone.get_current_timezone()
+            )
+        if not hora_inicio_cierre:
+            hora_inicio_cierre = hora_cierre
+        if not hora_fin_referencia:
+            hora_fin_referencia = hora_inicio_cierre
+
+        ventana_fin = hora_fin_referencia + timedelta(minutes=5)
+        if hora_cierre < hora_inicio_cierre:
+            espera = _format_duration(hora_inicio_cierre - hora_cierre)
+            return Response(
+                {
+                    "detail": (
+                        "El cierre se habilita luego de registrar la apertura. "
+                        f"Podras intentarlo nuevamente en {espera}."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if hora_cierre > ventana_fin:
+            retraso = _format_duration(hora_cierre - ventana_fin)
+            return Response(
+                {
+                    "detail": (
+                        "La ventana para registrar el cierre ha finalizado. "
+                        f"Se cerro hace {retraso}."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         registro = self._registrar_cierre_registro(
             registro,
